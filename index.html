@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>KlimKeur — Mijn Materiaal</title>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#5B9A2F">
+<style>
+/* ============================================================
+   DESIGN TOKENS
+   ============================================================ */
+:root {
+  --green: #5B9A2F;
+  --green-dark: #3D7A1A;
+  --green-light: #8BC53F;
+  --bg: #F0F4F8;
+  --bg-card: #FFFFFF;
+  --bg-input: #F5F7FA;
+  --text: #1A2332;
+  --text-sub: #4A5568;
+  --text-muted: #8899AA;
+  --border: #D8E2EC;
+  --danger: #E74C3C;
+  --warning: #F39C12;
+  --r: 10px;
+  --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  --shadow-lg: 0 4px 24px rgba(0,0,0,0.14);
+}
+
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:16px}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+.header{background:var(--green);color:#fff;padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.2)}
+.header-logo{display:flex;align-items:center;gap:10px}
+.header-logo svg{width:26px;height:26px;opacity:.9}
+.header-title{font-size:17px;font-weight:700}
+.header-sub{font-size:11px;opacity:.8;margin-top:1px}
+.logout-btn{background:none;border:1.5px solid rgba(255,255,255,.4);color:#fff;padding:5px 10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;display:none;align-items:center;gap:4px;transition:background .2s}
+.logout-btn:hover{background:rgba(255,255,255,.15)}
+.logout-btn svg{width:14px;height:14px}
+
+/* ============================================================
+   TABS
+   ============================================================ */
+.tabs{background:#fff;border-bottom:2px solid var(--border);display:flex;position:sticky;top:56px;z-index:90}
+.tab-btn{flex:1;padding:13px 6px;text-align:center;font-size:13px;font-weight:500;color:var(--text-muted);cursor:pointer;border:none;background:transparent;border-bottom:3px solid transparent;margin-bottom:-2px;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:5px}
+.tab-btn.active{color:var(--green);border-bottom-color:var(--green);font-weight:600}
+.tab-btn svg{width:16px;height:16px}
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+.main{padding:20px 16px;max-width:680px;margin:0 auto}
+.page{display:none}.page.active{display:block}
+.fade-in{animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ============================================================
+   CARDS
+   ============================================================ */
+.card{background:var(--bg-card);border-radius:var(--r);box-shadow:var(--shadow);margin-bottom:16px;overflow:hidden}
+.card-header{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px}
+.card-title{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px}
+.card-title svg{width:18px;height:18px;color:var(--green)}
+.card-body{padding:18px}
+
+/* ============================================================
+   FORMS
+   ============================================================ */
+.form-group{margin-bottom:14px}
+.form-label{display:block;font-size:13px;font-weight:600;color:var(--text-sub);margin-bottom:5px}
+.form-label .opt{font-weight:400;color:var(--text-muted)}
+.form-input,.form-select{width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:var(--r);font-size:16px;background:var(--bg-input);color:var(--text);transition:border-color .2s;-webkit-appearance:none}
+.form-input:focus,.form-select:focus{outline:none;border-color:var(--green);background:#fff}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:480px){.form-row{grid-template-columns:1fr}}
+
+/* ============================================================
+   AUTOCOMPLETE
+   ============================================================ */
+.ac-wrap{position:relative}
+.ac-dd{position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--green);border-top:none;border-radius:0 0 var(--r) var(--r);max-height:260px;overflow-y:auto;z-index:200;box-shadow:var(--shadow-lg);display:none}
+.ac-dd.open{display:block}
+.ac-item{padding:10px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .1s}
+.ac-item:last-child{border-bottom:none}
+.ac-item:hover,.ac-item.selected{background:#EBF5E1}
+.ac-omschr{font-size:14px;font-weight:600;color:var(--text)}
+.ac-sub{font-size:12px;color:var(--text-muted);margin-top:2px}
+.ac-match{color:var(--green);font-weight:700}
+.ac-vrij{font-size:13px;color:var(--text-sub);font-style:italic}
+.merk-auto{background:#EBF5E1;border-color:var(--green)!important;color:var(--green-dark);font-weight:500}
+.merk-auto-label{font-size:11px;color:var(--green);margin-top:4px;display:flex;align-items:center;gap:4px}
+.merk-auto-label svg{width:12px;height:12px}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:11px 18px;border-radius:var(--r);font-size:15px;font-weight:600;cursor:pointer;border:2px solid transparent;transition:all .2s;white-space:nowrap;-webkit-appearance:none}
+.btn svg{width:18px;height:18px;flex-shrink:0}
+.btn-primary{background:var(--green);color:#fff;border-color:var(--green);width:100%;padding:13px;font-size:16px}
+.btn-primary:hover,.btn-primary:active{background:var(--green-dark);border-color:var(--green-dark)}
+.btn-secondary{background:#fff;color:var(--text);border-color:var(--border)}
+.btn-secondary:hover{border-color:var(--text-muted)}
+.btn-sm{padding:7px 12px;font-size:13px}.btn-sm svg{width:15px;height:15px}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* ============================================================
+   MATERIAAL ITEMS
+   ============================================================ */
+.mat-item{border:1.5px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:10px;background:#fff;transition:border-color .2s}
+.mat-item:hover{border-color:var(--green)}
+.mat-item-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.mat-naam{font-size:15px;font-weight:600}
+.mat-merk{font-size:12px;color:var(--green);font-weight:600;margin-top:2px}
+.mat-meta{font-size:13px;color:var(--text-sub);margin-top:5px;display:flex;gap:12px;flex-wrap:wrap}
+.mat-meta span{display:flex;align-items:center;gap:4px}
+.mat-meta svg{width:13px;height:13px;color:var(--text-muted)}
+.mat-sn{font-family:'Courier New',monospace;font-size:13px;background:var(--bg);padding:2px 8px;border-radius:4px;color:var(--green);font-weight:600}
+.mat-opmerking{margin-top:5px;font-size:12px;color:var(--warning);display:flex;align-items:center;gap:4px}
+.mat-opmerking svg{width:12px;height:12px}
+.item-actions{display:flex;gap:6px;flex-shrink:0}
+.icon-btn{width:34px;height:34px;border-radius:8px;border:1.5px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-sub);transition:all .15s}
+.icon-btn:hover{border-color:var(--green);color:var(--green)}
+.icon-btn.danger:hover{border-color:var(--danger);color:var(--danger)}
+.icon-btn svg{width:16px;height:16px}
+
+/* ============================================================
+   KEURING STATUS BADGES
+   ============================================================ */
+.keur-badge{font-size:12px;padding:3px 8px;border-radius:6px;font-weight:600;display:inline-flex;align-items:center;gap:4px}
+.keur-badge.ok{background:#E8F5E1;color:#2D7A16}
+.keur-badge.soon{background:#FEF3E2;color:#D68910}
+.keur-badge.overdue{background:#FDECEC;color:#C0392B}
+
+/* ============================================================
+   STATISTIEKEN
+   ============================================================ */
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.stat-box{background:#fff;border:1.5px solid var(--border);border-radius:var(--r);padding:14px 10px;text-align:center}
+.stat-nr{font-size:24px;font-weight:700;color:var(--green)}
+.stat-lbl{font-size:11px;color:var(--text-muted);margin-top:2px;font-weight:500}
+
+/* ============================================================
+   CERTIFICAAT
+   ============================================================ */
+.cert-header{background:linear-gradient(135deg,var(--green),var(--green-dark));color:#fff;padding:20px;border-radius:var(--r);margin-bottom:16px}
+.cert-nr{font-size:22px;font-weight:700;letter-spacing:1px}
+.cert-meta{font-size:13px;opacity:.85;margin-top:6px;line-height:1.6}
+.cert-item{padding:12px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:12px}
+.cert-item:last-child{border-bottom:none}
+.cert-item-info{flex:1}
+.cert-item-omschr{font-size:14px;font-weight:600}
+.cert-item-sn{font-family:monospace;font-size:12px;color:var(--text-muted);margin-top:2px}
+
+/* ============================================================
+   BADGES
+   ============================================================ */
+.badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;white-space:nowrap}
+.badge-green{background:#E8F5E1;color:#2D7A16}
+.badge-red{background:#FDECEC;color:#C0392B}
+.badge-orange{background:#FEF3E2;color:#D68910}
+.badge-gray{background:var(--bg);color:var(--text-muted)}
+.count-badge{background:var(--green);color:#fff;border-radius:12px;padding:2px 8px;font-size:12px;font-weight:700}
+
+/* ============================================================
+   BANNERS
+   ============================================================ */
+.info-banner{background:#EBF5E1;border:1.5px solid #B8DFA0;border-radius:var(--r);padding:14px 16px;font-size:13px;color:#2D5A16;margin-bottom:16px;line-height:1.5;display:flex;gap:10px;align-items:flex-start}
+.info-banner svg{width:18px;height:18px;flex-shrink:0;margin-top:1px}
+.warn-banner{background:#FEF3E2;border:1.5px solid #F5CBA7;border-radius:var(--r);padding:14px 16px;font-size:13px;color:#7D4E00;margin-bottom:16px;line-height:1.5;display:flex;gap:10px;align-items:flex-start}
+.warn-banner svg{width:18px;height:18px;flex-shrink:0;margin-top:1px}
+
+/* ============================================================
+   LEGE STAAT
+   ============================================================ */
+.empty-state{text-align:center;padding:48px 24px;color:var(--text-muted)}
+.empty-state svg{width:56px;height:56px;margin-bottom:16px;opacity:.3}
+.empty-state h3{font-size:17px;margin-bottom:8px;color:var(--text-sub)}
+.empty-state p{font-size:14px;line-height:1.5}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+#toastBox{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none;width:90%;max-width:380px}
+.toast{background:#1A2332;color:#fff;padding:12px 20px;border-radius:var(--r);font-size:14px;font-weight:500;box-shadow:var(--shadow-lg);transition:opacity .3s;text-align:center;width:100%}
+.toast.success{background:var(--green)}
+.toast.error{background:var(--danger)}
+.toast.warning{background:var(--warning);color:#333}
+
+/* ============================================================
+   MODAL
+   ============================================================ */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:500;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s}
+.modal-overlay.active{opacity:1;pointer-events:all}
+.modal{background:#fff;border-radius:16px 16px 0 0;width:100%;max-width:560px;max-height:92vh;overflow-y:auto;transform:translateY(20px);transition:transform .3s;padding:24px 20px;padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+.modal-overlay.active .modal{transform:translateY(0)}
+.modal-title{font-size:18px;font-weight:700;margin-bottom:20px}
+.modal-footer{display:flex;gap:10px;margin-top:20px}
+.modal-footer .btn{flex:1}
+
+/* ============================================================
+   STATUS BADGE (productlijst)
+   ============================================================ */
+.status-badge{font-size:12px;padding:5px 10px;border-radius:6px;display:inline-flex;align-items:center;gap:6px}
+.status-badge.ok{background:#EBF5E1;color:#2D7A16}
+.status-badge.err{background:#FEF3E2;color:#7D4E00}
+.status-badge.load{background:var(--bg);color:var(--text-muted)}
+
+/* ============================================================
+   HISTORIE
+   ============================================================ */
+.hist-item{border:1.5px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden}
+.hist-header{padding:12px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;background:#fff;transition:background .15s;user-select:none}
+.hist-header:hover{background:#F5F9F0}
+.hist-left{display:flex;flex-direction:column;gap:3px}
+.hist-nr{font-size:15px;font-weight:700;color:var(--text)}
+.hist-datum{font-size:12px;color:var(--text-muted)}
+.hist-chev{transition:transform .25s;color:var(--text-muted);flex-shrink:0}
+.hist-chev.open{transform:rotate(180deg)}
+.hist-body{display:none;padding:8px 16px;border-top:1px solid var(--border);background:var(--bg)}
+.hist-body.open{display:block}
+
+/* ============================================================
+   FILTERS & ZOEK
+   ============================================================ */
+.filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.filter-btn{padding:6px 14px;border-radius:20px;font-size:13px;font-weight:600;border:1.5px solid var(--border);background:#fff;color:var(--text-sub);cursor:pointer;transition:all .15s;white-space:nowrap}
+.filter-btn:hover{border-color:var(--green);color:var(--green)}
+.filter-btn.active{background:var(--green);border-color:var(--green);color:#fff}
+.zoek-wrap{position:relative;margin-bottom:16px}
+.zoek-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--text-muted);pointer-events:none}
+.zoek-input{width:100%;padding:10px 12px 10px 36px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;background:#fff;color:var(--text);transition:border-color .2s}
+.zoek-input:focus{outline:none;border-color:var(--green)}
+.zoek-input::placeholder{color:var(--text-muted)}
+.geen-res{text-align:center;padding:24px;color:var(--text-muted);font-size:14px}
+
+/* ============================================================
+   AUTH OVERLAY
+   ============================================================ */
+.auth-overlay{position:fixed;inset:0;background:var(--bg);z-index:9000;display:flex;align-items:center;justify-content:center;padding:24px}
+.auth-box{background:#fff;border-radius:16px;padding:32px 28px;width:100%;max-width:380px;box-shadow:var(--shadow-lg)}
+.auth-logo{display:flex;align-items:center;gap:10px;margin-bottom:24px}
+.auth-logo svg{width:32px;height:32px;color:var(--green)}
+.auth-logo-title{font-size:20px;font-weight:700;color:var(--text)}
+.auth-logo-sub{font-size:12px;color:var(--text-muted)}
+.auth-title{font-size:18px;font-weight:700;margin-bottom:6px}
+.auth-sub{font-size:14px;color:var(--text-muted);margin-bottom:24px}
+.auth-error{background:#FDECEC;border:1px solid #F5C6C6;border-radius:8px;padding:10px 14px;font-size:13px;color:var(--danger);margin-bottom:16px;display:none}
+.auth-footer{font-size:12px;color:var(--text-muted);text-align:center;margin-top:16px}
+
+/* ============================================================
+   CONNECTION BANNER (offline indicator)
+   ============================================================ */
+.offline-bar{display:none;background:var(--danger);color:#fff;text-align:center;padding:8px;font-size:13px;font-weight:600}
+.offline-bar.show{display:block}
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     OFFLINE INDICATOR
+     ============================================================ -->
+<div class="offline-bar" id="offlineBar">Geen internetverbinding — wijzigingen worden niet opgeslagen</div>
+
+<!-- ============================================================
+     LOGIN OVERLAY
+     ============================================================ -->
+<div class="auth-overlay" id="authOverlay">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+      <div><div class="auth-logo-title">KlimKeur</div><div class="auth-logo-sub">Mijn Materiaal</div></div>
+    </div>
+    <div class="auth-title">Inloggen</div>
+    <div class="auth-sub">Voer je e-mailadres en wachtwoord in</div>
+    <div class="auth-error" id="authError"></div>
+    <div class="form-group">
+      <label class="form-label">E-mailadres</label>
+      <input class="form-input" id="authEmail" type="email" placeholder="naam@voorbeeld.nl" autocomplete="email" onkeydown="if(event.key==='Enter')document.getElementById('authPassword').focus()">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Wachtwoord</label>
+      <input class="form-input" id="authPassword" type="password" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')authLogin()">
+    </div>
+    <button class="btn btn-primary" id="authBtn" onclick="authLogin()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+      Inloggen
+    </button>
+    <div class="auth-footer">Geen account? Neem contact op met je keurmeester.</div>
+  </div>
+</div>
+
+<!-- ============================================================
+     WACHTWOORD INSTELLEN OVERLAY (invite flow)
+     ============================================================ -->
+<div class="auth-overlay" id="wwOverlay" style="display:none">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+      <div><div class="auth-logo-title">KlimKeur</div><div class="auth-logo-sub">Mijn Materiaal</div></div>
+    </div>
+    <div class="auth-title">Welkom!</div>
+    <div class="auth-sub">Kies een wachtwoord om je account te activeren</div>
+    <div class="auth-error" id="wwError"></div>
+    <div class="form-group">
+      <label class="form-label">Nieuw wachtwoord</label>
+      <input class="form-input" id="wwNieuw" type="password" placeholder="Minimaal 8 tekens" autocomplete="new-password" onkeydown="if(event.key==='Enter')document.getElementById('wwHerhaal').focus()">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Herhaal wachtwoord</label>
+      <input class="form-input" id="wwHerhaal" type="password" placeholder="Herhaal wachtwoord" autocomplete="new-password" onkeydown="if(event.key==='Enter')activeerAccount()">
+    </div>
+    <button class="btn btn-primary" id="wwBtn" onclick="activeerAccount()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="10"/></svg>
+      Account activeren
+    </button>
+  </div>
+</div>
+
+<div id="toastBox"></div>
+
+<!-- ============================================================
+     HEADER
+     ============================================================ -->
+<header class="header">
+  <div class="header-logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
+    <div><div class="header-title">KlimKeur</div><div class="header-sub" id="headerSub">Mijn Materiaal</div></div>
+  </div>
+  <button class="logout-btn" id="logoutBtn" onclick="uitloggen()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    Uitloggen
+  </button>
+</header>
+
+<!-- ============================================================
+     TABS
+     ============================================================ -->
+<div class="tabs">
+  <button class="tab-btn active" data-tab="materiaal" onclick="switchTab('materiaal',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+    Materiaal
+  </button>
+  <button class="tab-btn" data-tab="certificaat" onclick="switchTab('certificaat',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    Certificaat
+  </button>
+  <button class="tab-btn" data-tab="historie" onclick="switchTab('historie',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    Historie
+  </button>
+</div>
+
+<!-- ============================================================
+     PAGINA: MIJN MATERIAAL
+     ============================================================ -->
+<div class="page active" id="page-materiaal">
+  <div class="main fade-in">
+
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-nr" id="statTotaal">0</div><div class="stat-lbl">Artikelen</div></div>
+      <div class="stat-box"><div class="stat-nr" id="statGoed" style="color:var(--green-light)">0</div><div class="stat-lbl">Goedgekeurd</div></div>
+      <div class="stat-box"><div class="stat-nr" id="statKeuring" style="color:var(--warning)">0</div><div class="stat-lbl">Keuring nodig</div></div>
+    </div>
+
+    <!-- TOEVOEGEN FORMULIER -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Artikel toevoegen
+        </div>
+        <div class="status-badge load" id="statusBadge">Laden...</div>
+      </div>
+      <div class="card-body">
+        <div class="form-group">
+          <label class="form-label">Omschrijving *</label>
+          <div class="ac-wrap">
+            <input class="form-input" id="fOmschr" placeholder="Typ om te zoeken of voer zelf in..." type="text" autocomplete="off" autocorrect="off" spellcheck="false" oninput="acZoeken(this.value,'main')" onkeydown="acKey(event,'main')" onblur="setTimeout(()=>acSluit('main'),150)">
+            <div class="ac-dd" id="acDd"></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Merk <span class="opt">(automatisch bij herkenning)</span></label>
+          <input class="form-input" id="fMerk" placeholder="Bijv. Petzl, Black Diamond..." type="text" autocomplete="off">
+          <div class="merk-auto-label" id="merkLabel" style="display:none">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            Automatisch ingevuld vanuit productdatabase
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Serienummer *</label>
+            <input class="form-input" id="fSN" placeholder="bijv. SN12345678" type="text" autocomplete="off" style="font-family:monospace">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Productiedatum <span class="opt">optioneel</span></label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              <input class="form-input" id="fJaar" type="number" placeholder="Jaar" min="1980" max="2099" style="font-family:monospace">
+              <select class="form-input" id="fMaand"><option value="">Maand</option><option value="01">Jan</option><option value="02">Feb</option><option value="03">Mrt</option><option value="04">Apr</option><option value="05">Mei</option><option value="06">Jun</option><option value="07">Jul</option><option value="08">Aug</option><option value="09">Sep</option><option value="10">Okt</option><option value="11">Nov</option><option value="12">Dec</option></select>
+            </div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">In gebruik sinds <span class="opt">optioneel</span></label>
+            <input class="form-input" id="fInGebruik" type="date">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Gebruiker <span class="opt">optioneel</span></label>
+            <input class="form-input" id="fGebruiker" placeholder="Naam of functie..." type="text">
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Opmerking <span class="opt">optioneel</span></label>
+          <input class="form-input" id="fOpmerking" placeholder="bijv. kleur rood, recall gecontroleerd..." type="text">
+        </div>
+        <button class="btn btn-primary" style="margin-top:16px" onclick="voegToe()" id="toevoegBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Toevoegen
+        </button>
+      </div>
+    </div>
+
+    <!-- ARTIKELLIJST -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          Mijn artikelen
+          <span class="count-badge" id="artTeller">0</span>
+        </div>
+      </div>
+      <div class="card-body" id="artLijst" style="padding:12px 16px">
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+          <h3>Nog geen artikelen</h3>
+          <p>Voeg je klimmateriaal toe via het formulier hierboven.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-banner" style="margin-bottom:0">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      Je materiaal wordt automatisch opgeslagen en is zichtbaar voor je keurmeester.
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     PAGINA: CERTIFICAAT
+     ============================================================ -->
+<div class="page" id="page-certificaat">
+  <div class="main fade-in">
+    <div id="certLeeg">
+      <div class="card"><div class="card-body">
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          <h3>Geen certificaat beschikbaar</h3>
+          <p>Na je keuring verschijnt je certificaat hier automatisch.</p>
+        </div>
+      </div></div>
+    </div>
+    <div id="certView" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+        <h2 style="font-size:16px;font-weight:700">Mijn Certificaat</h2>
+      </div>
+      <div class="cert-header" id="certInfo"></div>
+      <div class="stats-row" id="certStats"></div>
+      <div id="certFilter" style="display:none"><div class="filter-row" id="certFilterBtns"></div></div>
+      <div class="zoek-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="zoek-input" id="certZoek" placeholder="Zoek op omschrijving, serienummer, merk..." oninput="filterCert()">
+      </div>
+      <div id="certItems"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     PAGINA: HISTORIE
+     ============================================================ -->
+<div class="page" id="page-historie">
+  <div class="main fade-in">
+    <div id="histLeeg">
+      <div class="card"><div class="card-body">
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <h3>Geen historie beschikbaar</h3>
+          <p>Na je eerste keuring verschijnt de historie hier automatisch.</p>
+        </div>
+      </div></div>
+    </div>
+    <div id="histView" style="display:none">
+      <div class="zoek-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="zoek-input" id="histZoek" placeholder="Zoek op omschrijving, serienummer, merk..." oninput="filterHist()">
+      </div>
+      <div id="histLijst"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: Artikel bewerken
+     ============================================================ -->
+<div class="modal-overlay" id="editModal" onclick="if(event.target===this)sluitModal()">
+  <div class="modal">
+    <div class="modal-title">Artikel bewerken</div>
+    <input type="hidden" id="editIdx">
+    <div class="form-group">
+      <label class="form-label">Omschrijving *</label>
+      <div class="ac-wrap">
+        <input class="form-input" id="eOmschr" type="text" autocomplete="off" oninput="acZoeken(this.value,'edit')" onkeydown="acKey(event,'edit')" onblur="setTimeout(()=>acSluit('edit'),150)">
+        <div class="ac-dd" id="acDdEdit"></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Merk</label>
+      <input class="form-input" id="eMerk" type="text" autocomplete="off">
+      <div class="merk-auto-label" id="eMerkLabel" style="display:none">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+        Automatisch ingevuld
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Serienummer *</label><input class="form-input" id="eSN" type="text" style="font-family:monospace" autocomplete="off"></div>
+      <div class="form-group"><label class="form-label">Productiedatum</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <input class="form-input" id="eJaar" type="number" placeholder="Jaar" min="1980" max="2099" style="font-family:monospace">
+          <select class="form-input" id="eMaand"><option value="">Maand</option><option value="01">Jan</option><option value="02">Feb</option><option value="03">Mrt</option><option value="04">Apr</option><option value="05">Mei</option><option value="06">Jun</option><option value="07">Jul</option><option value="08">Aug</option><option value="09">Sep</option><option value="10">Okt</option><option value="11">Nov</option><option value="12">Dec</option></select>
+        </div>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">In gebruik sinds</label><input class="form-input" id="eInGebruik" type="date"></div>
+      <div class="form-group"><label class="form-label">Gebruiker</label><input class="form-input" id="eGebruiker" type="text"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Opmerking</label><input class="form-input" id="eOpmerking" type="text"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="sluitModal()">Annuleren</button>
+      <button class="btn btn-primary" style="width:auto;flex:1" onclick="slaEditOp()">Opslaan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     JAVASCRIPT
+     ============================================================ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+'use strict';
+
+// ============================================================
+// SUPABASE
+// ============================================================
+const SB_URL = 'https://vyptkeqcibtgyrnrcxrj.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ5cHRrZXFjaWJ0Z3lybnJjeHJqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI1NzExMTcsImV4cCI6MjA4ODE0NzExN30.BnzphDOgDB038qraKao2Lx5SpAz4oCSMBWDvNzeIIaM';
+const sb = supabase.createClient(SB_URL, SB_KEY);
+
+// ============================================================
+// GLOBALE STAAT
+// ============================================================
+let _userId   = null;   // Supabase auth user id
+let _klantId  = null;   // klant record id in klanten tabel
+let _klantNaam = '';     // weergavenaam klant
+let _artikelen = [];     // in-memory artikel lijst
+let _keuringen = [];     // alle keuringen voor deze klant
+let _certData  = null;   // huidig getoond certificaat
+let _actieveFilter = 'alle';
+
+// ============================================================
+// INVITE DETECTIE
+// ============================================================
+let _inviteHash = null;
+let _inviteMode = false;
+
+(function() {
+  const hash = window.location.hash.substring(1);
+  const p = new URLSearchParams(hash);
+  if (p.get('token_hash') && p.get('type') === 'invite') {
+    _inviteHash = p.get('token_hash');
+    _inviteMode = true;
+    // Toon wachtwoord-scherm direct (script staat onderaan body, DOM is klaar)
+    el('wwOverlay').style.display = 'flex';
+    el('authOverlay').style.display = 'none';
+    // Hash NIET wissen — Supabase moet hem nog kunnen lezen
+    // Wordt pas gewist na succesvolle activering
+  }
+})();
+
+// ============================================================
+// HELPERS
+// ============================================================
+function el(id) { return document.getElementById(id); }
+
+function toast(msg, type='success', ms=3000) {
+  const t = document.createElement('div');
+  t.className = 'toast ' + type;
+  t.textContent = msg;
+  el('toastBox').appendChild(t);
+  setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, ms);
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escAttr(s) { return String(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+function escRx(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+
+function formatDatum(d) {
+  if (!d) return '';
+  try { return new Date(d + (d.includes('T') ? '' : 'T00:00:00')).toLocaleDateString('nl-NL'); }
+  catch { return d; }
+}
+
+function genId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 5); }
+
+function keuringStatus(inGebruik) {
+  if (!inGebruik) return null;
+  const mnd = (Date.now() - new Date(inGebruik + 'T00:00:00').getTime()) / (1000*60*60*24*30.44);
+  if (mnd >= 12) return 'overdue';
+  if (mnd >= 10) return 'soon';
+  return 'ok';
+}
+
+function keuringTekst(status, inGebruik) {
+  if (!status || !inGebruik) return null;
+  const mnd = Math.round((Date.now() - new Date(inGebruik + 'T00:00:00').getTime()) / (1000*60*60*24*30.44));
+  if (status === 'overdue') return `⚠ Keuring nodig (${mnd} mnd)`;
+  if (status === 'soon') return `⏰ Keuring over ~${12 - mnd} mnd`;
+  return `✓ Keuring over ${12 - mnd} mnd`;
+}
+
+function setBadge(type, tekst) {
+  const b = el('statusBadge');
+  if (!b) return;
+  b.className = 'status-badge ' + type;
+  b.textContent = tekst;
+}
+
+// ============================================================
+// AUTHENTICATIE
+// ============================================================
+async function authLogin() {
+  const email = el('authEmail').value.trim();
+  const pass = el('authPassword').value;
+  const btn = el('authBtn');
+
+  if (!email || !pass) { toonAuthFout('Vul e-mail en wachtwoord in.'); return; }
+
+  btn.disabled = true; btn.textContent = 'Bezig...';
+  el('authError').style.display = 'none';
+
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+
+  btn.disabled = false;
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg> Inloggen';
+
+  if (error) {
+    console.error('Login fout:', error);
+    const msgs = {
+      'Invalid login credentials': 'E-mail of wachtwoord is onjuist.',
+      'Email not confirmed': 'Bevestig eerst je e-mailadres via de ontvangen mail.',
+      'Too many requests': 'Te veel pogingen. Wacht even en probeer opnieuw.',
+    };
+    toonAuthFout(msgs[error.message] || error.message);
+  }
+}
+
+function toonAuthFout(tekst) {
+  const e = el('authError'); e.textContent = tekst; e.style.display = 'block';
+}
+
+async function activeerAccount() {
+  const ww1 = el('wwNieuw').value;
+  const ww2 = el('wwHerhaal').value;
+  const fout = el('wwError');
+  const btn = el('wwBtn');
+  fout.textContent = ''; fout.style.display = 'none';
+
+  if (!ww1 || ww1.length < 8) { fout.textContent = 'Wachtwoord moet minimaal 8 tekens zijn'; fout.style.display = 'block'; return; }
+  if (ww1 !== ww2) { fout.textContent = 'Wachtwoorden komen niet overeen'; fout.style.display = 'block'; return; }
+
+  btn.disabled = true; btn.textContent = 'Bezig...';
+
+  // Check of Supabase de invite-token al automatisch verwerkt heeft
+  const { data: sessieData } = await sb.auth.getSession();
+  const heeftSessie = !!sessieData?.session;
+
+  if (_inviteHash && !heeftSessie) {
+    // Geen sessie — handmatig verifiëren
+    const { error } = await sb.auth.verifyOtp({ token_hash: _inviteHash, type: 'invite' });
+    if (error) {
+      console.error('Verify OTP fout:', error);
+      fout.textContent = 'Uitnodiging verlopen of ongeldig. Vraag een nieuwe aan.';
+      fout.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Account activeren';
+      return;
+    }
+  }
+  // Token is verwerkt (handmatig of automatisch), URL opschonen
+  _inviteHash = null;
+  history.replaceState(null, '', window.location.pathname);
+
+  const { error } = await sb.auth.updateUser({ password: ww1 });
+  if (error) {
+    fout.textContent = 'Fout: ' + error.message;
+    fout.style.display = 'block';
+    btn.disabled = false; btn.textContent = 'Account activeren';
+    return;
+  }
+
+  // Koppel auth_user_id aan klant
+  const { data: { user } } = await sb.auth.getUser();
+  if (user) {
+    await sb.from('klanten').update({ auth_user_id: user.id }).eq('email', user.email).is('auth_user_id', null).catch(console.error);
+  }
+
+  _inviteMode = false;
+  el('wwOverlay').style.display = 'none';
+  toast('Welkom! Je account is geactiveerd.', 'success');
+}
+
+async function uitloggen() {
+  if (!confirm('Weet je zeker dat je wilt uitloggen?')) return;
+  await sb.auth.signOut();
+  _userId = null; _klantId = null; _klantNaam = '';
+  _artikelen = []; _keuringen = []; _certData = null;
+  el('logoutBtn').style.display = 'none';
+  toast('Je bent uitgelogd');
+}
+
+// ============================================================
+// AUTH STATE CHANGE — het hart van de app
+// ============================================================
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (event === 'PASSWORD_RECOVERY') {
+    el('authOverlay').style.display = 'none';
+    el('wwOverlay').style.display = 'flex';
+    return;
+  }
+
+  if (session) {
+    if (_inviteMode) {
+      el('authOverlay').style.display = 'none';
+      el('wwOverlay').style.display = 'flex';
+      return;
+    }
+
+    // Verberg overlays, toon app
+    el('authOverlay').style.display = 'none';
+    el('wwOverlay').style.display = 'none';
+    el('logoutBtn').style.display = 'inline-flex';
+    _userId = session.user.id;
+
+    // Zoek de gekoppelde klant
+    try {
+      const { data: klant, error } = await sb.from('klanten')
+        .select('id, bedrijf, contactpersoon')
+        .eq('auth_user_id', session.user.id)
+        .maybeSingle();
+
+      if (error) console.warn('Klant ophalen fout:', error.message);
+
+      if (klant) {
+        _klantId = klant.id;
+        _klantNaam = klant.bedrijf || klant.contactpersoon || '';
+        el('headerSub').textContent = _klantNaam + ' · Mijn Materiaal';
+      } else {
+        // Geen klant gekoppeld — toon email-naam als fallback
+        const naam = session.user.email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        el('headerSub').textContent = naam + ' · Mijn Materiaal';
+        console.warn('Geen klant gekoppeld aan auth_user_id:', session.user.id);
+      }
+    } catch (e) {
+      console.error('Fout bij klant ophalen:', e);
+      el('headerSub').textContent = 'Mijn Materiaal';
+    }
+
+    // Laad alle data
+    setBadge('load', 'Laden...');
+    await laadAlles();
+    setBadge('ok', '✓ Verbonden');
+
+  } else {
+    // Uitgelogd
+    _userId = null; _klantId = null; _klantNaam = '';
+    el('wwOverlay').style.display = 'none';
+    el('authOverlay').style.display = 'flex';
+    el('logoutBtn').style.display = 'none';
+  }
+});
+
+// ============================================================
+// DATA LADEN — alles in één keer
+// ============================================================
+async function laadAlles() {
+  await Promise.all([
+    laadArtikelen(),
+    laadKeuringen(),
+  ]);
+}
+
+async function laadArtikelen() {
+  if (!_klantId) return;
+  try {
+    const { data, error } = await sb.from('keuring_items')
+      .select('*')
+      .eq('klant_id', _klantId)
+      .order('aangemaakt_op', { ascending: false });
+
+    if (error) throw error;
+
+    _artikelen = (data || []).map(r => ({
+      id: r.id, omschrijving: r.omschrijving||'', merk: r.merk||'',
+      materiaal: r.materiaal||'', serienummer: r.serienummer||'',
+      fabrJaar: r.fabr_jaar||'', fabrMaand: r.fabr_maand||'',
+      productieDatum: r.productie_datum||'', inGebruik: r.in_gebruik||'',
+      gebruiker: r.gebruiker||'', opmerking: r.opmerking||'',
+      toegevoegd: r.aangemaakt_op||'', keuringId: r.keuring_id||null,
+      status: r.status||'nieuw', afkeurcode: r.afkeurcode||'',
+      handleiding: r.handleiding||'',
+    }));
+    renderArtikelen();
+  } catch(e) {
+    console.error('Fout laden artikelen:', e);
+    toast('Kon artikelen niet laden', 'error');
+  }
+}
+
+async function laadKeuringen() {
+  if (!_klantId) return;
+  try {
+    // Haal keuringen + hun items op in twee efficiënte queries
+    const { data: keuringen, error } = await sb.from('keuringen')
+      .select('*')
+      .eq('klant_id', _klantId)
+      .order('datum', { ascending: false });
+
+    if (error) throw error;
+    if (!keuringen || keuringen.length === 0) {
+      _keuringen = [];
+      return;
+    }
+
+    // Haal ALLE items voor deze klant die aan een keuring gekoppeld zijn, in één query
+    const keurIds = keuringen.map(k => k.id);
+    const { data: alleItems, error: itemsErr } = await sb.from('keuring_items')
+      .select('*')
+      .in('keuring_id', keurIds);
+
+    if (itemsErr) console.warn('Items laden fout:', itemsErr.message);
+
+    // Koppel items aan keuringen
+    const itemsMap = {};
+    (alleItems || []).forEach(r => {
+      if (!itemsMap[r.keuring_id]) itemsMap[r.keuring_id] = [];
+      itemsMap[r.keuring_id].push({
+        omschrijving: r.omschrijving||'', merk: r.merk||'',
+        materiaal: r.materiaal||'', serienummer: r.serienummer||'',
+        productieDatum: r.productie_datum||'', inGebruik: r.in_gebruik||'',
+        gebruiker: r.gebruiker||'', opmerking: r.opmerking||'',
+        status: r.status||'', afkeurcode: r.afkeurcode||'',
+        handleiding: r.handleiding||'',
+      });
+    });
+
+    _keuringen = keuringen.map(k => ({
+      ...k,
+      _items: itemsMap[k.id] || [],
+    }));
+
+    // Toon meest recente certificaat
+    if (_keuringen.length > 0) {
+      toonCertificaat(_keuringen[0]);
+      toonHistorie();
+    }
+  } catch(e) {
+    console.error('Fout laden keuringen:', e);
+  }
+}
+
+// ============================================================
+// ARTIKEL OPSLAAN / VERWIJDEREN
+// ============================================================
+async function slaArtikelOp(art) {
+  const row = {
+    id: art.id, auth_user_id: _userId, klant_id: _klantId,
+    omschrijving: art.omschrijving, merk: art.merk||'',
+    materiaal: art.materiaal||'', serienummer: art.serienummer,
+    productie_datum: art.productieDatum||'',
+    fabr_jaar: art.fabrJaar ? parseInt(art.fabrJaar) : null,
+    fabr_maand: art.fabrMaand||null,
+    in_gebruik: art.inGebruik||null, gebruiker: art.gebruiker||'',
+    opmerking: art.opmerking||'', status: art.status||'nieuw',
+    keuring_id: art.keuringId||null,
+  };
+  const { error } = await sb.from('keuring_items').upsert(row, { onConflict: 'id' });
+  if (error) { console.error('Opslaan fout:', error); toast('Fout bij opslaan', 'error'); return false; }
+  return true;
+}
+
+async function verwijderArtikelDb(id) {
+  const { error } = await sb.from('keuring_items').delete().eq('id', id);
+  if (error) { console.error('Verwijderen fout:', error); toast('Fout bij verwijderen', 'error'); return false; }
+  return true;
+}
+
+// ============================================================
+// ARTIKEL TOEVOEGEN
+// ============================================================
+async function voegToe() {
+  if (!_userId || !_klantId) { toast('Je bent niet ingelogd', 'error'); return; }
+
+  const omschr = el('fOmschr').value.trim();
+  const sn = el('fSN').value.trim();
+  if (!omschr) { toast('Vul een omschrijving in', 'error'); el('fOmschr').focus(); return; }
+  if (!sn) { toast('Vul een serienummer in', 'error'); el('fSN').focus(); return; }
+
+  if (_artikelen.some(a => a.serienummer.toLowerCase() === sn.toLowerCase())) {
+    if (!confirm(`Serienummer "${sn}" staat al in je lijst. Toch toevoegen?`)) return;
+  }
+
+  const jaar = el('fJaar').value.trim();
+  const maand = el('fMaand').value;
+  const art = {
+    id: genId(), omschrijving: omschr, merk: el('fMerk').value.trim(),
+    materiaal: el('fOmschr').dataset.materiaal||'', serienummer: sn,
+    fabrJaar: jaar ? parseInt(jaar) : '', fabrMaand: (jaar && maand) ? maand : '',
+    productieDatum: jaar ? (maand ? jaar+'-'+maand : String(jaar)) : '',
+    inGebruik: el('fInGebruik').value, gebruiker: el('fGebruiker').value.trim(),
+    opmerking: el('fOpmerking').value.trim(), toegevoegd: new Date().toISOString(),
+    status: 'nieuw', keuringId: null,
+  };
+
+  const btn = el('toevoegBtn');
+  btn.disabled = true; btn.textContent = 'Opslaan...';
+  const ok = await slaArtikelOp(art);
+  btn.disabled = false;
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Toevoegen';
+
+  if (!ok) return;
+  _artikelen.unshift(art);
+
+  // Reset formulier (bewaar gebruiker-veld)
+  el('fOmschr').value = ''; el('fMerk').value = ''; el('fMerk').className = 'form-input';
+  el('merkLabel').style.display = 'none'; el('fSN').value = '';
+  el('fJaar').value = ''; el('fMaand').value = '';
+  el('fInGebruik').value = ''; el('fOpmerking').value = '';
+  el('fOmschr').dataset.materiaal = '';
+  el('fOmschr').focus();
+
+  renderArtikelen();
+  toast('Artikel toegevoegd');
+}
+
+// ============================================================
+// RENDEREN: ARTIKELEN
+// ============================================================
+function renderArtikelen() {
+  const lijst = el('artLijst');
+  el('artTeller').textContent = _artikelen.length;
+
+  const goed = _artikelen.filter(a => a.status === 'goedgekeurd').length;
+  const keurNodig = _artikelen.filter(a => keuringStatus(a.inGebruik) === 'overdue').length;
+  el('statTotaal').textContent = _artikelen.length;
+  el('statGoed').textContent = goed;
+  el('statKeuring').textContent = keurNodig;
+
+  if (_artikelen.length === 0) {
+    lijst.innerHTML = `<div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+      <h3>Nog geen artikelen</h3><p>Voeg je klimmateriaal toe via het formulier hierboven.</p></div>`;
+    return;
+  }
+
+  // Sorteer: keuring nodig bovenaan
+  const prio = { overdue:0, soon:1, ok:2 };
+  const sorted = [..._artikelen].sort((a, b) => {
+    const ka = keuringStatus(a.inGebruik)||'ok';
+    const kb = keuringStatus(b.inGebruik)||'ok';
+    if ((prio[ka]||2) !== (prio[kb]||2)) return (prio[ka]||2) - (prio[kb]||2);
+    return (b.toegevoegd||'').localeCompare(a.toegevoegd||'');
+  });
+
+  lijst.innerHTML = sorted.map(art => {
+    const idx = _artikelen.indexOf(art);
+    const ks = keuringStatus(art.inGebruik);
+    const kt = keuringTekst(ks, art.inGebruik);
+    const statusBadge = art.status === 'goedgekeurd' ? '<span class="badge badge-green" style="font-size:11px;padding:2px 8px;">✓ Goed</span>'
+      : art.status === 'afgekeurd' ? '<span class="badge badge-red" style="font-size:11px;padding:2px 8px;">✗ Afgekeurd</span>'
+      : '';
+
+    return `<div class="mat-item">
+      <div class="mat-item-top">
+        <div style="flex:1;min-width:0">
+          <div class="mat-naam">${esc(art.omschrijving)} ${statusBadge}</div>
+          ${art.merk ? `<div class="mat-merk">${esc(art.merk)}</div>` : ''}
+          <div class="mat-meta">
+            <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="4" rx="1"/><rect x="2" y="10" width="20" height="4" rx="1"/><rect x="2" y="16" width="20" height="4" rx="1"/></svg><span class="mat-sn">${esc(art.serienummer)}</span></span>
+            ${art.inGebruik ? `<span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Sinds: ${formatDatum(art.inGebruik)}</span>` : ''}
+            ${art.fabrJaar ? `<span style="color:var(--text-muted)">Prod: ${art.fabrJaar}${art.fabrMaand ? '-'+art.fabrMaand : ''}</span>` : ''}
+            ${art.gebruiker ? `<span style="color:var(--text-muted)">👤 ${esc(art.gebruiker)}</span>` : ''}
+          </div>
+          ${art.opmerking ? `<div class="mat-opmerking"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>${esc(art.opmerking)}</div>` : ''}
+          ${kt ? `<div style="margin-top:6px"><span class="keur-badge ${ks}">${kt}</span></div>` : ''}
+        </div>
+        <div class="item-actions">
+          ${!art.keuringId ? `<button class="icon-btn" title="Bewerken" onclick="openEdit(${idx})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
+          ${!art.keuringId ? `<button class="icon-btn danger" title="Verwijderen" onclick="verwijder(${idx})"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ============================================================
+// BEWERKEN
+// ============================================================
+function openEdit(idx) {
+  const a = _artikelen[idx]; if (!a) return;
+  el('editIdx').value = idx;
+  el('eOmschr').value = a.omschrijving||'';
+  el('eMerk').value = a.merk||''; el('eMerk').className = 'form-input'; el('eMerkLabel').style.display = 'none';
+  el('eSN').value = a.serienummer||'';
+  el('eJaar').value = a.fabrJaar||''; el('eMaand').value = a.fabrMaand||'';
+  el('eInGebruik').value = a.inGebruik||'';
+  el('eGebruiker').value = a.gebruiker||''; el('eOpmerking').value = a.opmerking||'';
+  el('editModal').classList.add('active');
+}
+
+function sluitModal() { el('editModal').classList.remove('active'); }
+
+async function slaEditOp() {
+  const idx = parseInt(el('editIdx').value);
+  const omschr = el('eOmschr').value.trim();
+  const sn = el('eSN').value.trim();
+  if (!omschr || !sn) { toast('Omschrijving en serienummer zijn verplicht', 'error'); return; }
+
+  const jaar = el('eJaar').value.trim();
+  const maand = el('eMaand').value;
+  const updated = {
+    ..._artikelen[idx], omschrijving: omschr, merk: el('eMerk').value.trim(),
+    serienummer: sn, fabrJaar: jaar ? parseInt(jaar) : '',
+    fabrMaand: (jaar && maand) ? maand : '',
+    productieDatum: jaar ? (maand ? jaar+'-'+maand : String(jaar)) : '',
+    inGebruik: el('eInGebruik').value, gebruiker: el('eGebruiker').value.trim(),
+    opmerking: el('eOpmerking').value.trim(),
+  };
+
+  const ok = await slaArtikelOp(updated);
+  if (!ok) return;
+  _artikelen[idx] = updated;
+  sluitModal(); renderArtikelen(); toast('Artikel bijgewerkt');
+}
+
+async function verwijder(idx) {
+  const a = _artikelen[idx];
+  if (a.keuringId) { toast('Dit artikel is gekoppeld aan een keuring en kan niet worden verwijderd', 'error'); return; }
+  if (!confirm(`"${a.omschrijving}" (${a.serienummer}) verwijderen?`)) return;
+  const ok = await verwijderArtikelDb(a.id);
+  if (!ok) return;
+  _artikelen.splice(idx, 1);
+  renderArtikelen(); toast('Artikel verwijderd');
+}
+
+// ============================================================
+// CERTIFICAAT TONEN
+// ============================================================
+function toonCertificaat(keuring) {
+  if (!keuring) return;
+
+  _certData = {
+    certificaat: {
+      nr: keuring.certificaat_nr||'—', datum: keuring.datum||'',
+      keurmeester: keuring.keurmeester||'', bedrijf: keuring.bedrijf_keurmeester||'',
+      afgerond: keuring.afgerond||false,
+    },
+    items: keuring._items||[],
+  };
+  _actieveFilter = 'alle';
+
+  el('certLeeg').style.display = 'none';
+  el('certView').style.display = 'block';
+
+  const c = _certData.certificaat;
+  const items = _certData.items;
+
+  el('certInfo').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
+      <div>
+        <div style="font-size:11px;opacity:.75;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Certificaatnummer</div>
+        <div class="cert-nr">${esc(c.nr)}</div>
+        <div class="cert-meta">
+          ${_klantNaam ? esc(_klantNaam)+' · ' : ''}Keuringsdatum: ${c.datum ? formatDatum(c.datum) : '—'}<br>
+          Keurmeester: ${esc(c.keurmeester||'—')}${c.bedrijf ? ' · '+esc(c.bedrijf) : ''}
+        </div>
+      </div>
+      <span class="badge" style="background:rgba(255,255,255,.2);color:#fff">${c.afgerond ? '✓ Afgerond' : 'Concept'}</span>
+    </div>`;
+
+  const goed = items.filter(i => i.status === 'goedgekeurd').length;
+  const afk = items.filter(i => i.status === 'afgekeurd').length;
+  el('certStats').innerHTML = `
+    <div class="stat-box"><div class="stat-nr">${items.length}</div><div class="stat-lbl">Totaal</div></div>
+    <div class="stat-box"><div class="stat-nr" style="color:var(--green)">${goed}</div><div class="stat-lbl">Goedgekeurd</div></div>
+    <div class="stat-box"><div class="stat-nr" style="color:var(--danger)">${afk}</div><div class="stat-lbl">Afgekeurd</div></div>`;
+
+  // Gebruikerfilter
+  const gebruikers = [...new Set(items.map(i => i.gebruiker||''))];
+  const fEl = el('certFilter');
+  if (gebruikers.length > 1) {
+    fEl.style.display = 'block';
+    el('certFilterBtns').innerHTML = `<button class="filter-btn active" onclick="setCertFilter('alle',this)">Alle</button>` +
+      gebruikers.map(g => `<button class="filter-btn" onclick="setCertFilter('${escAttr(g)}',this)">${esc(g||'Algemeen')}</button>`).join('');
+  } else { fEl.style.display = 'none'; }
+
+  el('certZoek').value = '';
+  renderCertItems(items);
+}
+
+function setCertFilter(val, btn) {
+  _actieveFilter = val;
+  document.querySelectorAll('#certFilterBtns .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filterCert();
+}
+
+function filterCert() {
+  if (!_certData) return;
+  const q = (el('certZoek').value||'').toLowerCase().trim();
+  let items = _certData.items;
+  if (_actieveFilter !== 'alle') items = items.filter(i => (i.gebruiker||'') === _actieveFilter);
+  if (q) items = items.filter(i => [i.omschrijving, i.serienummer, i.merk, i.materiaal].some(v => (v||'').toLowerCase().includes(q)));
+  renderCertItems(items, q);
+}
+
+function renderCertItems(items, zoek) {
+  const hl = (s) => {
+    if (!zoek || !s) return esc(s||'');
+    return esc(s).replace(new RegExp('('+escRx(zoek)+')','gi'), '<mark style="background:#d4edda;border-radius:2px">$1</mark>');
+  };
+
+  if (items.length === 0) { el('certItems').innerHTML = '<div class="geen-res">Geen items gevonden</div>'; return; }
+
+  // Groepeer per gebruiker
+  const grp = {};
+  items.forEach(i => { const g = i.gebruiker||'Algemeen'; if (!grp[g]) grp[g] = []; grp[g].push(i); });
+
+  el('certItems').innerHTML = Object.entries(grp).map(([gebr, lijst]) => `
+    <div class="card" style="margin-bottom:12px">
+      <div class="card-header"><div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        ${esc(gebr)} <span class="count-badge">${lijst.length}</span>
+      </div></div>
+      <div class="card-body" style="padding:8px 16px">
+        ${lijst.map(i => {
+          const badge = i.status === 'goedgekeurd' ? '<span class="badge badge-green">✓ Goed</span>'
+            : i.status === 'afgekeurd' ? `<span class="badge badge-red">✗ Afgekeurd${i.afkeurcode ? ' — '+esc(i.afkeurcode) : ''}</span>`
+            : '<span class="badge badge-gray">Niet beoordeeld</span>';
+          return `<div class="cert-item">
+            <div class="cert-item-info">
+              <div class="cert-item-omschr">${hl(i.omschrijving||'—')}</div>
+              <div class="cert-item-sn">
+                ${i.serienummer ? 'SN: '+hl(i.serienummer) : ''}${i.merk ? ' · '+hl(i.merk) : ''}${i.materiaal ? ' · '+hl(i.materiaal) : ''}${i.inGebruik ? ' · Sinds: '+formatDatum(i.inGebruik) : ''}
+              </div>
+              ${i.opmerking ? `<div style="font-size:12px;color:var(--warning);margin-top:3px">⚠ ${esc(i.opmerking)}</div>` : ''}
+            </div>
+            <div style="flex-shrink:0">${badge}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`).join('');
+}
+
+// ============================================================
+// HISTORIE
+// ============================================================
+function toonHistorie() {
+  if (_keuringen.length === 0) {
+    el('histLeeg').style.display = 'block'; el('histView').style.display = 'none'; return;
+  }
+  el('histLeeg').style.display = 'none'; el('histView').style.display = 'block';
+  el('histZoek').value = '';
+  renderHistorie(_keuringen);
+}
+
+function filterHist() {
+  const q = (el('histZoek').value||'').toLowerCase().trim();
+  renderHistorie(_keuringen, q);
+}
+
+function renderHistorie(keuringen, zoek) {
+  const hl = (s) => {
+    if (!zoek || !s) return esc(s||'');
+    return esc(s).replace(new RegExp('('+escRx(zoek)+')','gi'), '<mark style="background:#d4edda;border-radius:2px">$1</mark>');
+  };
+
+  el('histLijst').innerHTML = keuringen.map((k, idx) => {
+    let items = k._items||[];
+    if (zoek) items = items.filter(i => [i.omschrijving, i.serienummer, i.merk, i.materiaal].some(v => (v||'').toLowerCase().includes(zoek)));
+    if (zoek && items.length === 0) return '';
+
+    const goed = items.filter(i => i.status === 'goedgekeurd').length;
+    const afk = items.filter(i => i.status === 'afgekeurd').length;
+
+    return `<div class="hist-item">
+      <div class="hist-header" onclick="toggleHist(${idx})">
+        <div class="hist-left">
+          <div class="hist-nr">${esc(k.certificaat_nr||'—')}</div>
+          <div class="hist-datum">${k.datum ? formatDatum(k.datum) : '—'} · ${esc(k.keurmeester||'')} · ${items.length} items · <span style="color:var(--green)">${goed} goed</span>${afk > 0 ? ' · <span style="color:var(--danger)">'+afk+' afgekeurd</span>' : ''}</div>
+        </div>
+        <svg class="hist-chev" id="hchev-${idx}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="hist-body" id="hbody-${idx}">
+        ${items.map(i => {
+          const badge = i.status === 'goedgekeurd' ? '<span class="badge badge-green">✓ Goed</span>'
+            : i.status === 'afgekeurd' ? `<span class="badge badge-red">✗ Afgekeurd${i.afkeurcode ? ' — '+esc(i.afkeurcode) : ''}</span>`
+            : '<span class="badge badge-gray">—</span>';
+          return `<div class="cert-item"><div class="cert-item-info">
+            <div class="cert-item-omschr">${hl(i.omschrijving||'—')}</div>
+            <div class="cert-item-sn">${i.serienummer ? 'SN: '+hl(i.serienummer) : ''}${i.merk ? ' · '+hl(i.merk) : ''}</div>
+          </div><div style="flex-shrink:0">${badge}</div></div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+
+  if (el('histLijst').innerHTML.trim() === '') {
+    el('histLijst').innerHTML = '<div class="geen-res">Geen items gevonden</div>';
+  }
+
+  // Auto-open bij zoekresultaten
+  if (zoek) {
+    keuringen.forEach((_, idx) => {
+      const b = el(`hbody-${idx}`); const c = el(`hchev-${idx}`);
+      if (b) b.classList.add('open'); if (c) c.classList.add('open');
+    });
+  }
+}
+
+function toggleHist(idx) {
+  const b = el(`hbody-${idx}`); const c = el(`hchev-${idx}`);
+  if (b) b.classList.toggle('open'); if (c) c.classList.toggle('open');
+}
+
+// ============================================================
+// TABS
+// ============================================================
+function switchTab(naam, knop) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  el('page-' + naam).classList.add('active');
+  knop.classList.add('active');
+}
+
+// ============================================================
+// AUTOCOMPLETE (productendatabase zoeken)
+// ============================================================
+let _acTimer = {};
+let _acIdx = { main: -1, edit: -1 };
+
+function acZoeken(q, ctx) {
+  _acIdx[ctx] = -1;
+  const dd = ctx === 'main' ? el('acDd') : el('acDdEdit');
+  if (!q || q.length < 1) { dd.classList.remove('open'); return; }
+  clearTimeout(_acTimer[ctx]);
+  _acTimer[ctx] = setTimeout(() => _acQuery(q.trim(), dd, ctx), 300);
+}
+
+async function _acQuery(q, dd, ctx) {
+  dd.classList.add('open');
+  dd.innerHTML = '<div class="ac-item"><div class="ac-vrij">Zoeken...</div></div>';
+
+  try {
+    const { data, error } = await sb.from('producten')
+      .select('omschrijving, merk, materiaal, categorie')
+      .or(`omschrijving.ilike.%${q}%,merk.ilike.%${q}%,materiaal.ilike.%${q}%`)
+      .limit(15);
+
+    if (error) throw error;
+    if (!data || data.length === 0) {
+      dd.innerHTML = `<div class="ac-item" onmousedown="acVrij('${ctx}')"><div class="ac-vrij">↵ Geen resultaten — gebruik "${esc(q)}" als vrije invoer</div></div>`;
+      return;
+    }
+
+    dd.innerHTML = data.map((p, i) => {
+      const sub = [p.merk, p.materiaal||p.categorie].filter(Boolean).join(' — ');
+      const hlQ = (s) => String(s||'').replace(new RegExp('('+escRx(q)+')','gi'), '<span class="ac-match">$1</span>');
+      return `<div class="ac-item" data-idx="${i}" onmousedown="acKies('${escAttr(p.omschrijving)}','${escAttr(p.merk||'')}','${ctx}','${escAttr(p.materiaal||p.categorie||'')}')">
+        <div class="ac-omschr">${hlQ(p.omschrijving)}</div>${sub ? `<div class="ac-sub">${hlQ(sub)}</div>` : ''}
+      </div>`;
+    }).join('') + `<div class="ac-item" onmousedown="acVrij('${ctx}')"><div class="ac-vrij">↵ Gebruik "${esc(q)}" als vrije invoer</div></div>`;
+  } catch(e) {
+    dd.innerHTML = `<div class="ac-item" onmousedown="acVrij('${ctx}')"><div class="ac-vrij">↵ Fout — typ "${esc(q)}" als vrije invoer</div></div>`;
+  }
+}
+
+function acKies(omschr, merk, ctx, mat) {
+  if (ctx === 'main') {
+    el('fOmschr').value = omschr; el('fMerk').value = merk;
+    el('fMerk').className = merk ? 'form-input merk-auto' : 'form-input';
+    el('merkLabel').style.display = merk ? 'flex' : 'none';
+    el('fOmschr').dataset.materiaal = mat||'';
+    el('acDd').classList.remove('open'); el('fSN').focus();
+  } else {
+    el('eOmschr').value = omschr; el('eMerk').value = merk;
+    el('eMerk').className = merk ? 'form-input merk-auto' : 'form-input';
+    el('eMerkLabel').style.display = merk ? 'flex' : 'none';
+    el('acDdEdit').classList.remove('open');
+  }
+}
+
+function acVrij(ctx) {
+  if (ctx === 'main') {
+    el('acDd').classList.remove('open'); el('fMerk').className = 'form-input';
+    el('merkLabel').style.display = 'none'; el('fSN').focus();
+  } else {
+    el('acDdEdit').classList.remove('open'); el('eMerk').className = 'form-input';
+    el('eMerkLabel').style.display = 'none';
+  }
+}
+
+function acSluit(ctx) { (ctx === 'main' ? el('acDd') : el('acDdEdit')).classList.remove('open'); }
+
+function acKey(e, ctx) {
+  const dd = ctx === 'main' ? el('acDd') : el('acDdEdit');
+  const items = dd.querySelectorAll('.ac-item');
+  if (!dd.classList.contains('open') || !items.length) return;
+
+  if (e.key === 'ArrowDown') { e.preventDefault(); _acIdx[ctx] = Math.min(_acIdx[ctx]+1, items.length-1); items.forEach((el,i) => el.classList.toggle('selected', i===_acIdx[ctx])); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); _acIdx[ctx] = Math.max(_acIdx[ctx]-1, 0); items.forEach((el,i) => el.classList.toggle('selected', i===_acIdx[ctx])); }
+  else if (e.key === 'Enter' && _acIdx[ctx] >= 0) { e.preventDefault(); items[_acIdx[ctx]].dispatchEvent(new MouseEvent('mousedown')); }
+  else if (e.key === 'Escape') { acSluit(ctx); }
+}
+
+// ============================================================
+// KEYBOARD SHORTCUTS
+// ============================================================
+el('fOmschr').addEventListener('keydown', e => { if (e.key === 'Enter' && !el('acDd').classList.contains('open')) { e.preventDefault(); el('fSN').focus(); } });
+el('fSN').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); el('fJaar').focus(); } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') sluitModal(); });
+
+// ============================================================
+// OFFLINE DETECTIE
+// ============================================================
+window.addEventListener('offline', () => el('offlineBar').classList.add('show'));
+window.addEventListener('online', () => { el('offlineBar').classList.remove('show'); toast('Verbinding hersteld', 'success'); });
+
+</script>
+</body>
+</html>
