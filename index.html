@@ -792,11 +792,16 @@ sb.auth.onAuthStateChange(async (event, session) => {
     setBadge('ok', '✓ Verbonden');
 
   } else {
-    // Uitgelogd
+    // Uitgelogd — maar als we in invite-mode zijn, NIET het inlogscherm tonen
     _userId = null; _klantId = null; _klantNaam = '';
-    el('wwOverlay').style.display = 'none';
-    el('authOverlay').style.display = 'flex';
     el('logoutBtn').style.display = 'none';
+    if (_inviteMode) {
+      el('authOverlay').style.display = 'none';
+      el('wwOverlay').style.display = 'flex';
+    } else {
+      el('wwOverlay').style.display = 'none';
+      el('authOverlay').style.display = 'flex';
+    }
   }
 });
 
