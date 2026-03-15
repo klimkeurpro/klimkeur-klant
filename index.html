@@ -722,7 +722,9 @@ async function activeerAccount() {
   // Koppel auth_user_id aan klant
   const { data: { user } } = await sb.auth.getUser();
   if (user) {
-    await sb.from('klanten').update({ auth_user_id: user.id }).eq('email', user.email).is('auth_user_id', null).catch(console.error);
+    try {
+      await sb.from('klanten').update({ auth_user_id: user.id }).eq('email', user.email).is('auth_user_id', null);
+    } catch(e) { console.error('Klant koppelen mislukt:', e); }
   }
 
   _inviteMode = false;
