@@ -19,12 +19,21 @@ sb.auth.onAuthStateChange(async (event, sessie) => {
 
   if (sessie?.user) {
     // --- INGELOGD ---
+
+    // Bekende valkuil: tijdens invite-flow vuurt SIGNED_IN al
+    // terwijl activeerAccount() nog bezig is met wachtwoord instellen.
+    // We wachten tot _inviteMode false is (wordt gezet in auth.js
+    // na succesvolle activering) voordat we verder gaan.
+    if (_inviteMode) {
+      console.log('SIGNED_IN tijdens invite-flow — wachten op activering');
+      return;
+    }
+
     await verwerkInlog(sessie.user);
   } else {
     // --- UITGELOGD ---
     if (_inviteMode) {
       // Invite-flow actief — toon wachtwoordscherm, niet het loginscherm
-      // (wordt al getoond door detecteerInvite() in auth.js)
       return;
     }
     verwerkUitlog();
