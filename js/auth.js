@@ -180,8 +180,15 @@ async function activeerAccount() {
     _inviteMode = false;
     _inviteHash = null;
 
-    // STAP E: Overlays verbergen — onAuthStateChange in app.js laadt de rest
+    // STAP E: Overlays verbergen
     document.getElementById('wwOverlay').style.display = 'none';
+
+    // STAP F: Zelf verwerkInlog aanroepen
+    // onAuthStateChange sloeg dit over omdat _inviteMode actief was
+    const { data: sessieFinal } = await sb.auth.getSession();
+    if (sessieFinal?.session?.user) {
+      await verwerkInlog(sessieFinal.session.user);
+    }
 
   } catch (err) {
     console.error('Onverwachte fout bij activeren:', err);
