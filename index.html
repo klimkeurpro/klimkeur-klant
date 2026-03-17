@@ -58,6 +58,15 @@
       Inloggen
     </button>
     <div class="auth-footer">Geen account? Neem contact op met je keurmeester.</div>
+    <div style="text-align:center;margin-top:12px">
+      <a id="wwVergetenLink" href="#" onclick="event.preventDefault();wachtwoordVergeten()"
+        style="font-size:13px;color:var(--green);text-decoration:none;">
+        Wachtwoord vergeten?
+      </a>
+    </div>
+    <div id="wwVergetenBevestiging" style="display:none;margin-top:12px;background:#EBF5E1;border:1px solid #B8DFA0;border-radius:8px;padding:10px 14px;font-size:13px;color:#2D5A16;text-align:center">
+      Reset-mail verstuurd! Controleer je inbox.
+    </div>
   </div>
 </div>
 
@@ -76,8 +85,8 @@
         <div class="auth-logo-sub">Mijn Materiaal</div>
       </div>
     </div>
-    <div class="auth-title">Welkom!</div>
-    <div class="auth-sub">Kies een wachtwoord om je account te activeren</div>
+    <div class="auth-title" id="wwTitel">Welkom!</div>
+    <div class="auth-sub" id="wwSub">Kies een wachtwoord om je account te activeren</div>
     <div class="auth-error" id="wwError"></div>
     <div class="form-group">
       <label class="form-label">Nieuw wachtwoord</label>
