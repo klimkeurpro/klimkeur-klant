@@ -54,7 +54,9 @@ function acZoekenOpVeld(context) {
   const materiaal = _getMateriaal(context);
   const omschr    = _getOmschrijving(context);
   if (!merk && !materiaal && !omschr) return;
-  staat.timer = setTimeout(() => acVoerZoekopdrachUit(omschr || '', context), 250);
+  // Minimaal 2 tekens in merk of materiaal voor dropdown verschijnt
+  if (merk.length < 2 && materiaal.length < 2 && omschr.length < 2) return;
+  staat.timer = setTimeout(() => acVoerZoekopdrachUit(omschr || '', context), 400);
 }
 
 // ============================================================
