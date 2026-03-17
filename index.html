@@ -204,18 +204,31 @@
           </div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">
-            Merk <span class="opt">(automatisch bij herkenning)</span>
-          </label>
-          <input class="form-input" id="fMerk"
-            placeholder="Bijv. Petzl, Black Diamond..." type="text" autocomplete="off">
-          <div class="merk-auto-label" id="merkLabel" style="display:none">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-              <polyline points="22 4 12 14.01 9 11.01"/>
-            </svg>
-            Automatisch ingevuld vanuit productdatabase
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">
+              Merk <span class="opt">(automatisch bij herkenning)</span>
+            </label>
+            <input class="form-input" id="fMerk"
+              placeholder="Bijv. Petzl, Edelrid..." type="text" autocomplete="off"
+              oninput="acZoekenOpVeld('main')"
+              onblur="setTimeout(()=>acSluit('main'),150)">
+            <div class="merk-auto-label" id="merkLabel" style="display:none">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+              Automatisch ingevuld vanuit productdatabase
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">
+              Materiaal <span class="opt">(automatisch bij herkenning)</span>
+            </label>
+            <input class="form-input" id="fMateriaal"
+              placeholder="Bijv. Helm, Harnas, Klimgordel..." type="text" autocomplete="off"
+              oninput="acZoekenOpVeld('main')"
+              onblur="setTimeout(()=>acSluit('main'),150)">
           </div>
         </div>
 
@@ -422,15 +435,25 @@
       </div>
     </div>
 
-    <div class="form-group">
-      <label class="form-label">Merk</label>
-      <input class="form-input" id="eMerk" type="text" autocomplete="off">
-      <div class="merk-auto-label" id="eMerkLabel" style="display:none">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-          <polyline points="22 4 12 14.01 9 11.01"/>
-        </svg>
-        Automatisch ingevuld
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Merk</label>
+        <input class="form-input" id="eMerk" type="text" autocomplete="off"
+          oninput="acZoekenOpVeld('edit')"
+          onblur="setTimeout(()=>acSluit('edit'),150)">
+        <div class="merk-auto-label" id="eMerkLabel" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+          Automatisch ingevuld
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Materiaal</label>
+        <input class="form-input" id="eMateriaal" type="text" autocomplete="off"
+          oninput="acZoekenOpVeld('edit')"
+          onblur="setTimeout(()=>acSluit('edit'),150)">
       </div>
     </div>
 
