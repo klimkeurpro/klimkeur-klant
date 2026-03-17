@@ -58,7 +58,7 @@ async function verwerkInlog(user) {
 
   // Globale staat instellen (gebruikt door data.js en ui.js)
   _klantId   = klant.id;
-  _klantNaam = klant.naam || '';
+  _klantNaam = klant.contactpersoon || klant.bedrijf || '';
   _bedrijfId = klant.bedrijf_id || null;
 
   // Naam tonen in header
