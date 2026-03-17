@@ -211,6 +211,50 @@ async function uitloggen() {
   // onAuthStateChange in app.js handelt de UI-reset af
 }
 
+
+// ============================================================
+// WACHTWOORD VERGETEN
+// Stuurt een reset-mail via Supabase
+// ============================================================
+async function wachtwoordVergeten() {
+  const emailEl = document.getElementById('authEmail');
+  const foutEl  = document.getElementById('authError');
+  const link    = document.getElementById('wwVergetenLink');
+
+  const email = emailEl.value.trim();
+
+  if (!email) {
+    foutEl.textContent = 'Vul eerst je e-mailadres in.';
+    foutEl.style.display = 'block';
+    emailEl.focus();
+    return;
+  }
+
+  link.textContent = 'Bezig...';
+
+  try {
+    const { error } = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: 'https://klimkeurpro.github.io/klimkeur-klant/',
+    });
+
+    if (error) {
+      console.error('Wachtwoord reset fout:', error);
+      foutEl.textContent = 'Fout bij versturen reset-mail. Probeer het opnieuw.';
+      foutEl.style.display = 'block';
+    } else {
+      foutEl.style.display = 'none';
+      // Toon bevestiging
+      document.getElementById('wwVergetenBevestiging').style.display = 'block';
+    }
+  } catch (err) {
+    console.error('Onverwachte fout bij wachtwoord reset:', err);
+    foutEl.textContent = 'Er is iets misgegaan. Probeer het opnieuw.';
+    foutEl.style.display = 'block';
+  } finally {
+    link.textContent = 'Wachtwoord vergeten?';
+  }
+}
+
 // ============================================================
 // KLANT RECORD OPHALEN na inloggen
 // Geeft het klant-object terug, of null bij fout
