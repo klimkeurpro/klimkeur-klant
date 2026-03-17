@@ -17,6 +17,19 @@
 sb.auth.onAuthStateChange(async (event, sessie) => {
   console.log('Auth event:', event);
 
+  if (event === 'PASSWORD_RECOVERY') {
+    // Klant heeft op reset-link geklikt — toon wachtwoord instellen scherm
+    console.log('Password recovery flow gedetecteerd');
+    document.getElementById('authOverlay').style.display = 'none';
+    document.getElementById('wwOverlay').style.display = 'flex';
+    // Pas de tekst aan voor reset (niet invite)
+    const titel = document.getElementById('wwTitel');
+    const sub   = document.getElementById('wwSub');
+    if (titel) titel.textContent = 'Nieuw wachtwoord kiezen';
+    if (sub)   sub.textContent   = 'Kies een nieuw wachtwoord voor je account';
+    return;
+  }
+
   if (sessie?.user) {
     // --- INGELOGD ---
 
