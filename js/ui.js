@@ -136,7 +136,7 @@ async function voegToe() {
     id:            genId(),
     omschrijving:  omschr,
     merk:          el('fMerk').value.trim(),
-    materiaal:     el('fOmschr').dataset.materiaal || '',
+    materiaal:     el('fMateriaal').value.trim() || el('fOmschr').dataset.materiaal || '',
     serienummer:   sn,
     fabrJaar:      jaar ? parseInt(jaar) : '',
     fabrMaand:     (jaar && maand) ? maand : '',
@@ -173,6 +173,7 @@ async function voegToe() {
   el('fMaand').value = '';
   el('fInGebruik').value = '';
   el('fOpmerking').value = '';
+  el('fMateriaal').value = '';
   el('fOmschr').dataset.materiaal = '';
   el('fGebruiker').value = gebruiker;
   el('fOmschr').focus();
@@ -192,6 +193,7 @@ function openEdit(idx) {
   el('eOmschr').value    = a.omschrijving || '';
   el('eMerk').value      = a.merk || '';
   el('eMerk').className  = 'form-input';
+  el('eMateriaal').value = a.materiaal || '';
   el('eMerkLabel').style.display = 'none';
   el('eSN').value        = a.serienummer || '';
   el('eJaar').value      = a.fabrJaar || '';
