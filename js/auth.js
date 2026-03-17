@@ -219,7 +219,7 @@ async function laadKlantRecord(userId) {
   try {
     const { data, error } = await sb
       .from('klanten')
-      .select('id, naam, bedrijf_id, email')
+      .select('id, bedrijf, contactpersoon, bedrijf_id, email')
       .eq('auth_user_id', userId)
       .maybeSingle();
 
