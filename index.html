@@ -71,7 +71,11 @@
 </div>
 
 <!-- ============================================================
-     WACHTWOORD INSTELLEN OVERLAY (invite-flow)
+     WACHTWOORD INSTELLEN OVERLAY
+     Wordt gebruikt voor twee flows:
+     1. Invite-flow: nieuwe klant stelt eerste wachtwoord in
+     2. Reset-flow: bestaande klant kiest nieuw wachtwoord
+     De teksten en knop worden dynamisch aangepast via JS.
      ============================================================ -->
 <div class="auth-overlay" id="wwOverlay" style="display:none">
   <div class="auth-box">
@@ -87,6 +91,13 @@
     </div>
     <div class="auth-title" id="wwTitel">Welkom!</div>
     <div class="auth-sub" id="wwSub">Kies een wachtwoord om je account te activeren</div>
+
+    <!-- E-mailadres weergave: toont voor welk account het wachtwoord wordt ingesteld -->
+    <div id="wwEmailInfo" style="display:none;margin-bottom:16px;background:#EBF5E1;border:1px solid #B8DFA0;border-radius:8px;padding:10px 14px;font-size:13px;color:#2D5A16;text-align:center">
+      <span style="font-weight:400">Account:</span>
+      <strong id="wwEmailAdres"></strong>
+    </div>
+
     <div class="auth-error" id="wwError"></div>
     <div class="form-group">
       <label class="form-label">Nieuw wachtwoord</label>
@@ -105,7 +116,7 @@
         <path d="M9 12l2 2 4-4"/>
         <circle cx="12" cy="12" r="10"/>
       </svg>
-      Account activeren
+      <span id="wwBtnTekst">Account activeren</span>
     </button>
   </div>
 </div>
