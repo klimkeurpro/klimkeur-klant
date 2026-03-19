@@ -13,38 +13,47 @@
 // - na inloggen
 // - na uitloggen
 // - na account activeren via invite-link
+// - na klikken op wachtwoord-reset-link in e-mail
 // ============================================================
 sb.auth.onAuthStateChange(async (event, sessie) => {
   console.log('Auth event:', event);
 
+  // ── PASSWORD RECOVERY ──
+  // Klant heeft op reset-link in e-mail geklikt.
+  // Supabase maakt automatisch een sessie aan.
+  // We tonen het wachtwoord-scherm met de juiste teksten.
   if (event === 'PASSWORD_RECOVERY') {
-    // Klant heeft op reset-link geklikt — toon wachtwoord instellen scherm
     console.log('Password recovery flow gedetecteerd');
-    document.getElementById('authOverlay').style.display = 'none';
-    document.getElementById('wwOverlay').style.display = 'flex';
-    // Pas de tekst aan voor reset (niet invite)
-    const titel = document.getElementById('wwTitel');
-    const sub   = document.getElementById('wwSub');
-    if (titel) titel.textContent = 'Nieuw wachtwoord kiezen';
-    if (sub)   sub.textContent   = 'Kies een nieuw wachtwoord voor je account';
+    const email = sessie?.user?.email || null;
+    toonWwScherm('reset', email);
     return;
   }
 
+  // ── INGELOGD ──
   if (sessie?.user) {
-    // --- INGELOGD ---
 
     // Bekende valkuil: tijdens invite-flow vuurt SIGNED_IN al
-    // terwijl activeerAccount() nog bezig is met wachtwoord instellen.
-    // We wachten tot _inviteMode false is (wordt gezet in auth.js
-    // na succesvolle activering) voordat we verder gaan.
+    // terwijl activeerAccount() nog bezig is. We wachten tot
+    // _inviteMode false is voordat we verder gaan.
     if (_inviteMode) {
       console.log('SIGNED_IN tijdens invite-flow — wachten op activering');
+
+      // Wel alvast het e-mailadres tonen op het wachtwoord-scherm
+      // zodat de klant ziet voor welk account ze bezig zijn
+      toonEmailOpWwScherm();
+      return;
+    }
+
+    // Reset-flow: als _wwFlow === 'reset' is de klant bezig
+    // met wachtwoord kiezen. Niet doorsturen naar de app.
+    if (_wwFlow === 'reset') {
+      console.log('Sessie-event tijdens reset-flow — wachten op wachtwoord keuze');
       return;
     }
 
     await verwerkInlog(sessie.user);
   } else {
-    // --- UITGELOGD ---
+    // ── UITGELOGD ──
     if (_inviteMode) {
       // Invite-flow actief — toon wachtwoordscherm, niet het loginscherm
       return;
@@ -85,7 +94,7 @@ async function verwerkInlog(user) {
   // Branding laden (gedefinieerd in branding.js)
   await laadBranding(_bedrijfId);
 
-  // Login overlay verbergen
+  // Alle overlays verbergen
   document.getElementById('authOverlay').style.display = 'none';
   document.getElementById('wwOverlay').style.display   = 'none';
 
@@ -117,6 +126,7 @@ function verwerkUitlog() {
 
   // Loginscherm tonen
   document.getElementById('authOverlay').style.display = 'flex';
+  document.getElementById('wwOverlay').style.display   = 'none';
 
   // Standaard kleuren herstellen
   const root = document.documentElement;
@@ -129,6 +139,10 @@ function verwerkUitlog() {
   const authPass  = document.getElementById('authPassword');
   if (authEmail) authEmail.value = '';
   if (authPass)  authPass.value  = '';
+
+  // Reset-bevestiging verbergen (als die zichtbaar was)
+  const bevestiging = document.getElementById('wwVergetenBevestiging');
+  if (bevestiging) bevestiging.style.display = 'none';
 }
 
 // ============================================================
