@@ -55,6 +55,7 @@ body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; b
 .header-logo img { width: 32px; height: 32px; object-fit: contain; border-radius: 4px; }
 .header-title { font-size: 17px; font-weight: 700; }
 .header-sub { font-size: 11px; opacity: .8; margin-top: 1px; }
+.header-welkom { font-size: 14px; font-weight: 600; opacity: .95; text-align: center; flex: 1; }
 .logout-btn { background: none; border: 1.5px solid rgba(255,255,255,.4); color: #fff; padding: 5px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; display: none; align-items: center; gap: 4px; transition: background .2s; }
 .logout-btn:hover { background: rgba(255,255,255,.15); }
 .logout-btn svg { width: 14px; height: 14px; }
