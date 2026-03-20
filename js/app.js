@@ -84,8 +84,8 @@ async function verwerkInlog(user) {
   _bedrijfId = klant.bedrijf_id || null;
 
   // Naam tonen in header
-  const headerSub = document.getElementById('headerSub');
-  if (headerSub && _klantNaam) headerSub.textContent = _klantNaam;
+  const welkomEl = document.getElementById('headerWelkom');
+  if (welkomEl) welkomEl.textContent = 'Welkom, ' + (_klantNaam || '');
 
   // Uitlogknop tonen
   const logoutBtn = document.getElementById('logoutBtn');
