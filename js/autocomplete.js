@@ -159,10 +159,12 @@ function acKey(event, context) {
     event.preventDefault();
     staat.selectie = Math.min(staat.selectie + 1, staat.resultaten.length - 1);
     acToonResultaten(_getOmschrijving(context), context);
+    setTimeout(() => { const sel = document.querySelector('.ac-item.selected'); if (sel) sel.scrollIntoView({ block: 'nearest' }); }, 10);
   } else if (event.key === 'ArrowUp') {
     event.preventDefault();
     staat.selectie = Math.max(staat.selectie - 1, -1);
     acToonResultaten(_getOmschrijving(context), context);
+    setTimeout(() => { const sel = document.querySelector('.ac-item.selected'); if (sel) sel.scrollIntoView({ block: 'nearest' }); }, 10);
   } else if (event.key === 'Enter') {
     event.preventDefault();
     if (staat.selectie >= 0) acKies(staat.selectie, context);
