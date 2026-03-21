@@ -213,8 +213,8 @@ async function slaEditOp() {
   const omschr = el('eOmschr').value.trim();
   const sn     = el('eSN').value.trim();
 
-  if (!omschr || !sn) {
-    toast('Omschrijving en serienummer zijn verplicht', 'error');
+  if (!omschr) {
+    toast('Omschrijving is verplicht', 'error');
     return;
   }
 
