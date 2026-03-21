@@ -256,9 +256,7 @@
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Serienummer <span class="opt">optioneel</span></label>
-            <input class="form-input" id="fSN"
-              placeholder="bijv. SN12345678" type="text"
-              autocomplete="off" style="font-family:monospace">
+            <div style="display:flex;gap:4px;"><input class="form-input" id="fSN" placeholder="bijv. SN12345678" type="text" autocomplete="off" style="font-family:monospace;flex:1;"><button type="button" class="btn btn-primary" onclick="openScanner('fSN')" title="Scan barcode/DataMatrix" style="padding:6px 10px;">📷</button></div>
           </div>
           <div class="form-group">
             <label class="form-label">
