@@ -6,6 +6,10 @@
 // config.js → auth.js → branding.js → data.js → ui.js → app.js
 // ============================================================
 
+// Vlag om te voorkomen dat verwerkInlog dubbel loopt
+// (Supabase vuurt SIGNED_IN soms meerdere keren achter elkaar)
+let _verwerkInlogBezig = false;
+
 // ============================================================
 // START: onAuthStateChange
 // Supabase roept dit aan zodra de inlogstatus verandert:
@@ -51,7 +55,21 @@ sb.auth.onAuthStateChange(async (event, sessie) => {
       return;
     }
 
-    await verwerkInlog(sessie.user);
+    // Bescherming: als verwerkInlog al bezig is, niet opnieuw starten
+    if (_verwerkInlogBezig) {
+      console.log('verwerkInlog al bezig — overgeslagen');
+      return;
+    }
+
+    try {
+      _verwerkInlogBezig = true;
+      await verwerkInlog(sessie.user);
+    } catch (err) {
+      console.error('Fout in verwerkInlog:', err);
+      toonFoutScherm('Er is iets misgegaan bij het inloggen. Probeer het opnieuw.');
+    } finally {
+      _verwerkInlogBezig = false;
+    }
   } else {
     // ── UITGELOGD ──
     if (_inviteMode) {
@@ -83,7 +101,7 @@ async function verwerkInlog(user) {
   _klantNaam = klant.contactpersoon || klant.bedrijf || '';
   _bedrijfId = klant.bedrijf_id || null;
 
-  // Naam tonen in header
+  // Klantnaam tonen in header (welkomsttekst)
   const welkomEl = document.getElementById('headerWelkom');
   if (welkomEl) welkomEl.textContent = 'Welkom, ' + (_klantNaam || '');
 
@@ -123,6 +141,10 @@ function verwerkUitlog() {
   // UI resetten
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn) logoutBtn.style.display = 'none';
+
+  // Welkomsttekst wissen
+  const welkomEl = document.getElementById('headerWelkom');
+  if (welkomEl) welkomEl.textContent = '';
 
   // Loginscherm tonen
   document.getElementById('authOverlay').style.display = 'flex';
