@@ -257,3 +257,4 @@ body { font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif; b
 .zoek-input:focus { outline: none; border-color: var(--green); }
 .zoek-input::placeholder { color: var(--text-muted); }
 .geen-res { text-align: center; padding: 24px; color: var(--text-muted); font-size: 14px; }
+@media print { .header, .tabs, .logout-btn, .offline-bar, #toastBox, .auth-overlay, #wwOverlay, button, .status-badge { display: none !important; } .page { display: block !important; } #page-certificaat { display: block !important; } #page-materiaal, #page-historie { display: none !important; } .main { padding: 0; max-width: 100%; } .cert-header { color: #000 !important; background: #f0f0f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; } body { background: #fff; } }
