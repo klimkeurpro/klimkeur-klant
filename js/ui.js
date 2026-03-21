@@ -124,8 +124,7 @@ async function voegToe() {
   const omschr = el('fOmschr').value.trim();
   const sn     = el('fSN').value.trim();
   if (!omschr) { toast('Vul een omschrijving in', 'error'); el('fOmschr').focus(); return; }
-  if (!sn)     { toast('Vul een serienummer in', 'error'); el('fSN').focus(); return; }
-
+  
   if (_artikelen.some(a => a.serienummer.toLowerCase() === sn.toLowerCase())) {
     if (!confirm(`Serienummer "${sn}" staat al in je lijst. Toch toevoegen?`)) return;
   }
