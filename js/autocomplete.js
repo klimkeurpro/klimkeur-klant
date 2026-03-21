@@ -167,6 +167,9 @@ function acKey(event, context) {
     event.preventDefault();
     if (staat.selectie >= 0) acKies(staat.selectie, context);
     else acSluit(context);
+  } else if (event.key === 'Tab' && staat.selectie >= 0) {
+    event.preventDefault();
+    acKies(staat.selectie, context);
   } else if (event.key === 'Escape') {
     acSluit(context);
   }
