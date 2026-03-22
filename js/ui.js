@@ -326,8 +326,7 @@ function toonCertificaat(keuring) {
     filterEl.style.display = 'none';
   }
 
-  el('certZoek').value = '';
-  renderCertItems(items);
+   renderCertItems(items);
 }
 
 function setCertFilter(waarde, knop) {
@@ -339,7 +338,7 @@ function setCertFilter(waarde, knop) {
 
 function filterCert() {
   if (!_certData) return;
-  const q     = (el('certZoek').value || '').toLowerCase().trim();
+  const q     = '';
   let items   = _certData.items;
   if (_actieveFilter !== 'alle') items = items.filter(i => (i.gebruiker || '') === _actieveFilter);
   if (q) items = items.filter(i =>
