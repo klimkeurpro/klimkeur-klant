@@ -388,7 +388,7 @@ function renderCertItems(items, zoek) {
                 ${i.serienummer ? 'SN: ' + hl(i.serienummer) : ''}
                 ${i.merk ? ' · ' + hl(i.merk) : ''}
                 ${i.materiaal ? ' · ' + hl(i.materiaal) : ''}
-                ${i.in_gebruik ? ' · Sinds: ' + formatDatum(i.in_gebruik) : ''}
+                ${i.fabr_jaar ? ' · Prod: ' + i.fabr_jaar + (i.fabr_maand ? '-' + String(i.fabr_maand).padStart(2,'0') : '') : ''}${i.in_gebruik ? ' · Sinds: ' + formatDatum(i.in_gebruik) : ''}
               </div>
               ${i.opmerking ? `<div style="font-size:12px;color:var(--warning);margin-top:3px">⚠ ${esc(i.opmerking)}</div>` : ''}
             </div>
