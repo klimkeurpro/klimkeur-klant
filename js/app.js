@@ -1,99 +1,92 @@
 'use strict';
 
 // ============================================================
-// app.js — DEBUG-VERSIE v3 — setTimeout fix
+// app.js — Initialisatie en onAuthStateChange
+// Dit bestand wordt als laatste geladen en knoopt alles samen:
+// config.js → auth.js → branding.js → data.js → ui.js → app.js
 // ============================================================
 
-let _appGeladen   = false;
-let _verwerkBezig = false;
+let _appGeladen   = false;  // true zodra verwerkInlog succesvol is afgerond
+let _verwerkBezig = false;  // true zolang verwerkInlog draait
 
-function dbg(tekst) {
-  console.log('[DBG]', tekst);
-  let panel = document.getElementById('dbgPanel');
-  if (!panel) {
-    panel = document.createElement('div');
-    panel.id = 'dbgPanel';
-    panel.style.cssText = 'position:fixed;bottom:0;left:0;right:0;max-height:40vh;overflow-y:auto;background:#111;color:#0f0;font:11px/1.4 monospace;padding:8px;z-index:99999;';
-    document.body.appendChild(panel);
-  }
-  const regel = document.createElement('div');
-  regel.textContent = new Date().toLocaleTimeString() + ' — ' + tekst;
-  panel.appendChild(regel);
-  panel.scrollTop = panel.scrollHeight;
-}
-
-(function checkStorage() {
-  try {
-    const raw = localStorage.getItem('klimkeur-klant-auth');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      const email = parsed?.user?.email || parsed?.session?.user?.email || '?';
-      dbg('localStorage GEVONDEN: ' + email);
-    } else {
-      dbg('localStorage LEEG');
-    }
-  } catch (e) {
-    dbg('localStorage FOUT: ' + e.message);
-  }
-})();
-
-// ── onAuthStateChange ──
-// BELANGRIJK: geen async werk hier! Alleen setTimeout.
+// ============================================================
+// onAuthStateChange
+//
+// BELANGRIJK: geen async Supabase-aanroepen in deze callback!
+// Supabase houdt intern een lock vast zolang de callback draait.
+// Als je vanuit de callback weer iets aan Supabase vraagt,
+// wacht die aanroep op datzelfde slot → impasse (deadlock).
+// Oplossing: setTimeout(0) breekt uit de lock.
+// ============================================================
 sb.auth.onAuthStateChange((event, sessie) => {
-  dbg('Auth event: ' + event + ' | sessie: ' + (sessie?.user?.email || 'null'));
-
-  // setTimeout(0) breekt uit de Supabase-lock.
-  // Zonder dit hangt elke Supabase-aanroep op mobiel.
+  console.log('Auth event:', event);
   setTimeout(() => afhandelenAuthEvent(event, sessie), 0);
 });
 
-// ── De echte afhandeling, buiten de lock ──
+// ============================================================
+// AUTH EVENT AFHANDELEN (buiten de Supabase-lock)
+// ============================================================
 async function afhandelenAuthEvent(event, sessie) {
-  dbg('afhandelenAuthEvent: ' + event);
 
+  // ── PASSWORD RECOVERY ──
   if (event === 'PASSWORD_RECOVERY') {
     toonWwScherm('reset', sessie?.user?.email || null);
     return;
   }
 
+  // ── INGELOGD ──
   if (sessie?.user) {
-    if (_inviteMode) { toonEmailOpWwScherm(); return; }
-    if (_wwFlow === 'reset') { return; }
-    if (_appGeladen) { dbg('→ app al geladen — skip'); return; }
-    if (_verwerkBezig) { dbg('→ al bezig — skip'); return; }
+
+    // Invite-flow: wacht tot activeerAccount() klaar is
+    if (_inviteMode) {
+      toonEmailOpWwScherm();
+      return;
+    }
+
+    // Reset-flow: klant is bezig met wachtwoord kiezen
+    if (_wwFlow === 'reset') {
+      return;
+    }
+
+    // App is al geladen (bijv. TOKEN_REFRESHED)
+    if (_appGeladen) {
+      return;
+    }
+
+    // Voorkom dubbele uitvoering
+    if (_verwerkBezig) {
+      return;
+    }
 
     try {
       _verwerkBezig = true;
-      dbg('→ verwerkInlog START voor ' + sessie.user.email);
       await verwerkInlog(sessie.user);
       _appGeladen = true;
-      dbg('→ verwerkInlog KLAAR ✓');
     } catch (err) {
-      dbg('→ FOUT: ' + err.message);
-      toonFoutScherm('Er ging iets mis bij het laden. Probeer te vernieuwen.');
+      console.error('Fout in verwerkInlog:', err);
+      toonFoutScherm('Er ging iets mis bij het laden. Probeer de pagina te vernieuwen.');
     } finally {
       _verwerkBezig = false;
     }
 
   } else {
+    // ── UITGELOGD ──
     if (_inviteMode) return;
-    dbg('→ verwerkUitlog');
     verwerkUitlog();
   }
 }
 
 // ============================================================
 // VERWERK INLOG
+// Laad klantrecord, branding, artikelen en keuringen
 // ============================================================
 async function verwerkInlog(user) {
   _userId = user.id;
 
-  dbg('laadKlantRecord...');
   const klant = await laadKlantRecord(_userId);
-  dbg('klant: ' + (klant ? klant.bedrijf : 'NULL'));
 
   if (!klant) {
-    toonFoutScherm('Account niet gekoppeld aan klantrecord. Neem contact op met Safety Green.');
+    toonFoutScherm('Je account is nog niet gekoppeld aan een klantrecord. Neem contact op met Safety Green.');
     return;
   }
 
@@ -107,7 +100,6 @@ async function verwerkInlog(user) {
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn) logoutBtn.style.display = 'flex';
 
-  dbg('laadBranding...');
   await laadBranding(_bedrijfId);
 
   document.getElementById('authOverlay').style.display = 'none';
@@ -115,11 +107,8 @@ async function verwerkInlog(user) {
 
   setBadge('ok', '✓ Verbonden');
 
-  dbg('laadArtikelen...');
   await laadArtikelen();
-  dbg('laadKeuringen...');
   await laadKeuringen();
-  dbg('ALLES GELADEN ✓');
 }
 
 // ============================================================
@@ -156,17 +145,17 @@ function verwerkUitlog() {
   if (bevestiging) bevestiging.style.display = 'none';
 }
 
+// ============================================================
+// FOUTSCHERM
+// ============================================================
 function toonFoutScherm(bericht) {
-  dbg('FOUTSCHERM: ' + bericht);
   document.getElementById('authOverlay').style.display = 'none';
   document.getElementById('wwOverlay').style.display   = 'none';
   toast(bericht, 'error', 8000);
   setBadge('err', '✗ Fout');
+  console.error('Fout bij inloggen:', bericht);
 }
 
-function setBadge(type, tekst) {
-  const b = document.getElementById('statusBadge');
-  if (!b) return;
-  b.className  = 'status-badge ' + type;
-  b.textContent = tekst;
-}
+// ============================================================
+// BADGE (verbindingsstatus)
+// =====================================
