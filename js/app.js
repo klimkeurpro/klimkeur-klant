@@ -1,7 +1,7 @@
 'use strict';
 
 // ============================================================
-// app.js — DEBUG-VERSIE v2 — met getSession() fix
+// app.js — DEBUG-VERSIE v3 — setTimeout fix
 // ============================================================
 
 let _appGeladen   = false;
@@ -22,17 +22,15 @@ function dbg(tekst) {
   panel.scrollTop = panel.scrollHeight;
 }
 
-// ── Check localStorage bij laden ──
 (function checkStorage() {
   try {
     const raw = localStorage.getItem('klimkeur-klant-auth');
     if (raw) {
       const parsed = JSON.parse(raw);
       const email = parsed?.user?.email || parsed?.session?.user?.email || '?';
-      const exp = parsed?.expires_at || parsed?.session?.expires_at || '?';
-      dbg('localStorage GEVONDEN: ' + email + ', exp=' + exp);
+      dbg('localStorage GEVONDEN: ' + email);
     } else {
-      dbg('localStorage LEEG — geen sessie opgeslagen');
+      dbg('localStorage LEEG');
     }
   } catch (e) {
     dbg('localStorage FOUT: ' + e.message);
@@ -40,8 +38,18 @@ function dbg(tekst) {
 })();
 
 // ── onAuthStateChange ──
-sb.auth.onAuthStateChange(async (event, sessie) => {
+// BELANGRIJK: geen async werk hier! Alleen setTimeout.
+sb.auth.onAuthStateChange((event, sessie) => {
   dbg('Auth event: ' + event + ' | sessie: ' + (sessie?.user?.email || 'null'));
+
+  // setTimeout(0) breekt uit de Supabase-lock.
+  // Zonder dit hangt elke Supabase-aanroep op mobiel.
+  setTimeout(() => afhandelenAuthEvent(event, sessie), 0);
+});
+
+// ── De echte afhandeling, buiten de lock ──
+async function afhandelenAuthEvent(event, sessie) {
+  dbg('afhandelenAuthEvent: ' + event);
 
   if (event === 'PASSWORD_RECOVERY') {
     toonWwScherm('reset', sessie?.user?.email || null);
@@ -52,45 +60,27 @@ sb.auth.onAuthStateChange(async (event, sessie) => {
     if (_inviteMode) { toonEmailOpWwScherm(); return; }
     if (_wwFlow === 'reset') { return; }
     if (_appGeladen) { dbg('→ app al geladen — skip'); return; }
-    if (_verwerkBezig) { dbg('→ verwerkInlog al bezig — skip'); return; }
+    if (_verwerkBezig) { dbg('→ al bezig — skip'); return; }
 
     try {
       _verwerkBezig = true;
-
-      // ── FIX: wacht tot Supabase intern klaar is ──
-      // Op mobiel vuurt onAuthStateChange soms voordat de
-      // token-refresh is afgerond. getSession() dwingt
-      // Supabase om eerst de interne staat af te ronden.
-      dbg('→ getSession() aanroepen om Supabase te laten stabiliseren...');
-      const { data: gs, error: gsErr } = await sb.auth.getSession();
-      if (gsErr) {
-        dbg('→ getSession FOUT: ' + gsErr.message);
-      }
-      if (!gs?.session) {
-        dbg('→ getSession gaf GEEN sessie terug — annuleren');
-        _verwerkBezig = false;
-        verwerkUitlog();
-        return;
-      }
-      dbg('→ getSession OK: ' + gs.session.user.email);
-
-      dbg('→ verwerkInlog START');
-      await verwerkInlog(gs.session.user);
+      dbg('→ verwerkInlog START voor ' + sessie.user.email);
+      await verwerkInlog(sessie.user);
       _appGeladen = true;
       dbg('→ verwerkInlog KLAAR ✓');
     } catch (err) {
-      dbg('→ verwerkInlog FOUT: ' + err.message);
-      toonFoutScherm('Er ging iets mis bij het laden. Probeer de pagina te vernieuwen.');
+      dbg('→ FOUT: ' + err.message);
+      toonFoutScherm('Er ging iets mis bij het laden. Probeer te vernieuwen.');
     } finally {
       _verwerkBezig = false;
     }
 
   } else {
     if (_inviteMode) return;
-    dbg('→ geen sessie — verwerkUitlog');
+    dbg('→ verwerkUitlog');
     verwerkUitlog();
   }
-});
+}
 
 // ============================================================
 // VERWERK INLOG
@@ -98,26 +88,12 @@ sb.auth.onAuthStateChange(async (event, sessie) => {
 async function verwerkInlog(user) {
   _userId = user.id;
 
-  dbg('laadKlantRecord voor ' + user.email + '...');
-
-  // Extra debug: tijdslimiet op de query
-  const klantBelofte = laadKlantRecord(_userId);
-  const timeoutBelofte = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('TIMEOUT na 10 seconden')), 10000)
-  );
-
-  let klant;
-  try {
-    klant = await Promise.race([klantBelofte, timeoutBelofte]);
-  } catch (err) {
-    dbg('laadKlantRecord MISLUKT: ' + err.message);
-    throw err;
-  }
-
-  dbg('klant resultaat: ' + (klant ? klant.bedrijf : 'NULL'));
+  dbg('laadKlantRecord...');
+  const klant = await laadKlantRecord(_userId);
+  dbg('klant: ' + (klant ? klant.bedrijf : 'NULL'));
 
   if (!klant) {
-    toonFoutScherm('Je account is nog niet gekoppeld aan een klantrecord. Neem contact op met Safety Green.');
+    toonFoutScherm('Account niet gekoppeld aan klantrecord. Neem contact op met Safety Green.');
     return;
   }
 
