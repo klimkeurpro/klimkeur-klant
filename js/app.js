@@ -22,6 +22,8 @@ sb.auth.onAuthStateChange(async (event, sessie) => {
 
     try {
       _verwerkInlogBezig = true;
+      // Korte pauze zodat Supabase auth-headers klaar zijn na sessie-herstel
+      await new Promise(resolve => setTimeout(resolve, 300));
       await verwerkInlog(sessie.user);
     } catch (err) {
       console.error('Fout in verwerkInlog:', err);
