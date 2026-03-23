@@ -1,17 +1,14 @@
 'use strict';
 
 // ============================================================
-// app.js — TIJDELIJKE DEBUG-VERSIE
-// Na het vinden van het probleem vervangen we dit weer
+// app.js — DEBUG-VERSIE v2 — met getSession() fix
 // ============================================================
 
 let _appGeladen   = false;
 let _verwerkBezig = false;
 
-// Debug helper — toont meldingen op het scherm
 function dbg(tekst) {
   console.log('[DBG]', tekst);
-  // Maak een zichtbaar debug-paneel als dat er nog niet is
   let panel = document.getElementById('dbgPanel');
   if (!panel) {
     panel = document.createElement('div');
@@ -47,35 +44,38 @@ sb.auth.onAuthStateChange(async (event, sessie) => {
   dbg('Auth event: ' + event + ' | sessie: ' + (sessie?.user?.email || 'null'));
 
   if (event === 'PASSWORD_RECOVERY') {
-    dbg('→ PASSWORD_RECOVERY — toon ww-scherm');
-    const email = sessie?.user?.email || null;
-    toonWwScherm('reset', email);
+    toonWwScherm('reset', sessie?.user?.email || null);
     return;
   }
 
   if (sessie?.user) {
-    if (_inviteMode) {
-      dbg('→ invite-mode actief — skip');
-      toonEmailOpWwScherm();
-      return;
-    }
-    if (_wwFlow === 'reset') {
-      dbg('→ reset-flow actief — skip');
-      return;
-    }
-    if (_appGeladen) {
-      dbg('→ app al geladen — skip');
-      return;
-    }
-    if (_verwerkBezig) {
-      dbg('→ verwerkInlog al bezig — skip');
-      return;
-    }
+    if (_inviteMode) { toonEmailOpWwScherm(); return; }
+    if (_wwFlow === 'reset') { return; }
+    if (_appGeladen) { dbg('→ app al geladen — skip'); return; }
+    if (_verwerkBezig) { dbg('→ verwerkInlog al bezig — skip'); return; }
 
     try {
       _verwerkBezig = true;
-      dbg('→ verwerkInlog START voor ' + sessie.user.email);
-      await verwerkInlog(sessie.user);
+
+      // ── FIX: wacht tot Supabase intern klaar is ──
+      // Op mobiel vuurt onAuthStateChange soms voordat de
+      // token-refresh is afgerond. getSession() dwingt
+      // Supabase om eerst de interne staat af te ronden.
+      dbg('→ getSession() aanroepen om Supabase te laten stabiliseren...');
+      const { data: gs, error: gsErr } = await sb.auth.getSession();
+      if (gsErr) {
+        dbg('→ getSession FOUT: ' + gsErr.message);
+      }
+      if (!gs?.session) {
+        dbg('→ getSession gaf GEEN sessie terug — annuleren');
+        _verwerkBezig = false;
+        verwerkUitlog();
+        return;
+      }
+      dbg('→ getSession OK: ' + gs.session.user.email);
+
+      dbg('→ verwerkInlog START');
+      await verwerkInlog(gs.session.user);
       _appGeladen = true;
       dbg('→ verwerkInlog KLAAR ✓');
     } catch (err) {
@@ -86,8 +86,8 @@ sb.auth.onAuthStateChange(async (event, sessie) => {
     }
 
   } else {
-    dbg('→ geen sessie — ' + (_inviteMode ? 'invite-mode, skip' : 'verwerkUitlog'));
     if (_inviteMode) return;
+    dbg('→ geen sessie — verwerkUitlog');
     verwerkUitlog();
   }
 });
@@ -98,8 +98,22 @@ sb.auth.onAuthStateChange(async (event, sessie) => {
 async function verwerkInlog(user) {
   _userId = user.id;
 
-  dbg('laadKlantRecord voor userId=' + _userId.substring(0, 8) + '...');
-  const klant = await laadKlantRecord(_userId);
+  dbg('laadKlantRecord voor ' + user.email + '...');
+
+  // Extra debug: tijdslimiet op de query
+  const klantBelofte = laadKlantRecord(_userId);
+  const timeoutBelofte = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('TIMEOUT na 10 seconden')), 10000)
+  );
+
+  let klant;
+  try {
+    klant = await Promise.race([klantBelofte, timeoutBelofte]);
+  } catch (err) {
+    dbg('laadKlantRecord MISLUKT: ' + err.message);
+    throw err;
+  }
+
   dbg('klant resultaat: ' + (klant ? klant.bedrijf : 'NULL'));
 
   if (!klant) {
