@@ -114,8 +114,13 @@ async function verwerkInlog(user) {
 
   // Branding laden (gedefinieerd in branding.js)
   toast('branding laden gestart...', 'ok', 5000);
-  await laadBranding(_bedrijfId);
-
+  
+  try {
+    await laadBranding(_bedrijfId);
+  } catch(e) {
+    toast('CRASH in laadBranding: ' + e.message, 'error', 8000);
+    throw e;
+  }
   toast('overlays verbergen...', 'ok', 5000);
   // Alle overlays verbergen
   document.getElementById('authOverlay').style.display = 'none';
