@@ -126,9 +126,8 @@ async function toonEmailOpWwScherm() {
 
 // ============================================================
 // LOGIN
-// Na succesvolle login roept onAuthStateChange in app.js
-// verwerkInlog aan. We doen dat hier NIET zelf om dubbele
-// aanroepen te voorkomen.
+// Na succesvolle login vuurt Supabase SIGNED_IN via onAuthStateChange,
+// wat verwerkInlog aanroept. We doen dat hier NIET zelf.
 // ============================================================
 async function authLogin() {
   const emailInput = document.getElementById('authEmail');
@@ -280,7 +279,7 @@ async function activeerAccount() {
 }
 
 function resetWwKnop() {
-  const btn     = document.getElementById('wwBtn');
+  const btn      = document.getElementById('wwBtn');
   const btnTekst = document.getElementById('wwBtnTekst');
   if (btn)      btn.disabled = false;
   if (btnTekst) btnTekst.textContent = _wwFlow === 'reset' ? 'Wachtwoord opslaan' : 'Account activeren';
@@ -302,7 +301,6 @@ async function uitloggen() {
 
 // ============================================================
 // WACHTWOORD VERGETEN
-// Stuurt een reset-mail via Supabase
 // ============================================================
 async function wachtwoordVergeten() {
   const emailEl = document.getElementById('authEmail');
@@ -346,6 +344,7 @@ async function wachtwoordVergeten() {
 // ============================================================
 // KLANTRECORD OPHALEN
 // Zoekt op auth_user_id. Geeft het klant-object terug of null.
+// Gooit een fout als de database-query mislukt.
 // ============================================================
 async function laadKlantRecord(userId) {
   const { data, error } = await sb
