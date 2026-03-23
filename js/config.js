@@ -6,4 +6,11 @@
 const SUPABASE_URL = 'https://vyptkeqcibtgyrnrcxrj.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_94HAHA4s4elNEiP3-Mmz3g_UZGd4pgu';
 
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    persistSession: true,
+    storageKey: 'klimkeur-klant-auth',
+    storage: window.localStorage,
+    autoRefreshToken: true,
+  }
+});
