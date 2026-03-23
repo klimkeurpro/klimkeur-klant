@@ -99,11 +99,12 @@ async function verwerkInlog(user) {
   }
 
   // Globale staat instellen (gebruikt door data.js en ui.js)
+  toast('staat instellen...', 'ok', 5000);
   _klantId   = klant.id;
   _klantNaam = klant.contactpersoon || klant.bedrijf || '';
   _bedrijfId = klant.bedrijf_id || null;
-  toast('staat ingesteld: ' + _klantNaam, 'ok', 5000);
-  
+  toast('staat ingesteld: klantId=' + _klantId + ' bedrijfId=' + _bedrijfId, 'ok', 5000);
+    
   // Klantnaam tonen in header (welkomsttekst)
   const welkomEl = document.getElementById('headerWelkom');
   if (welkomEl) welkomEl.textContent = 'Welkom, ' + (_klantNaam || '');
