@@ -42,13 +42,15 @@ async function verwerkInlog(user) {
   toast('verwerkInlog gestart voor: ' + user.email, 'ok', 5000);
 
  let klant = null;
-  try {
-    klant = await laadKlantRecord(_userId);
-    toast('klant: ' + (klant ? klant.bedrijf : 'NIET GEVONDEN'), 'ok', 5000);
-  } catch(e) {
-    toast('CRASH laadKlantRecord: ' + e.message, 'error', 8000);
-    return;
-  }
+toast('voor laadKlantRecord', 'ok', 5000);
+try {
+  const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), 5000));
+  klant = await Promise.race([laadKlantRecord(_userId), timeout]);
+  toast('klant: ' + (klant ? klant.bedrijf : 'NIET GEVONDEN'), 'ok', 5000);
+} catch(e) {
+  toast('CRASH: ' + e.message, 'error', 8000);
+  return;
+}
   if (!klant) {
     toonFoutScherm('Je account is nog niet gekoppeld aan een klantrecord. Neem contact op met Safety Green.');
     return;
