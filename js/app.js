@@ -88,9 +88,9 @@ async function verwerkInlog(user) {
   _userId = user.id;
 
   // Klantrecord ophalen (gedefinieerd in auth.js)
+  toast('verwerkInlog gestart voor: ' + user.email, 'ok', 5000);
   const klant = await laadKlantRecord(_userId);
-
-  if (!klant) {
+   if (!klant) {
     // Geen klantrecord gevonden — toon foutmelding
     toonFoutScherm('Je account is nog niet gekoppeld aan een klantrecord. Neem contact op met Safety Green.');
     return;
