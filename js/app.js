@@ -130,9 +130,16 @@ async function verwerkInlog(user) {
   setBadge('ok', '✓ Verbonden');
 
   // Data laden (gedefinieerd in data.js)
-  await laadArtikelen();
-  await laadKeuringen();
-}
+try {
+    await laadArtikelen();
+  } catch(e) {
+    toast('CRASH in laadArtikelen: ' + e.message, 'error', 8000);
+  }
+  try {
+    await laadKeuringen();
+  } catch(e) {
+    toast('CRASH in laadKeuringen: ' + e.message, 'error', 8000);
+  }
 
 // ============================================================
 // VERWERK UITLOG
