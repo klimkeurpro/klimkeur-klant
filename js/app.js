@@ -3,64 +3,64 @@
 // ============================================================
 // app.js — Startpunt van de KlantKeur app
 //
-// Dit bestand wordt als laatste geladen. Het registreert
-// onAuthStateChange en bevat de centrale inlog/uitlog-logica.
+// Volgorde in index.html:
+//   config.js → auth.js → branding.js → data.js → ui.js → app.js
 //
-// Volgorde events bij normaal inloggen:
-//   1. authLogin() in auth.js stuurt credentials naar Supabase
-//   2. Supabase vuurt SIGNED_IN via onAuthStateChange
-//   3. verwerkInlog() laadt klantrecord, branding, data
+// Hoe de app start:
 //
-// Volgorde events bij refresh (sessie-herstel):
-//   1. Supabase vuurt INITIAL_SESSION — negeren (sessie nog niet klaar)
-//   2. Supabase vuurt TOKEN_REFRESHED of SIGNED_IN
-//   3. verwerkInlog() laadt klantrecord, branding, data
+//   Bij handmatig inloggen:
+//     authLogin() → signInWithPassword → SIGNED_IN event → verwerkInlog
 //
-// Invite en reset-flow worden afgehandeld in auth.js.
-// onAuthStateChange herkent die flows en laat ze met rust.
+//   Bij page refresh (sessie-herstel):
+//     refreshSession() onderaan dit bestand → TOKEN_REFRESHED event → verwerkInlog
+//     (INITIAL_SESSION wordt genegeerd: token is daar mogelijk verlopen)
+//
+//   Na invite of wachtwoord-reset:
+//     activeerAccount() in auth.js roept verwerkInlog zelf aan
 // ============================================================
 
-// Vlag om te voorkomen dat verwerkInlog gelijktijdig twee keer loopt
+// Voorkomt dat verwerkInlog gelijktijdig twee keer loopt
 let _verwerkInlogBezig = false;
+
+// Voorkomt dat TOKEN_REFRESHED de app opnieuw laadt als SIGNED_IN al klaar is
+let _appGestart = false;
 
 
 // ============================================================
 // AUTH STATE CHANGE
-// Supabase roept dit aan bij elke wijziging in inlogstatus
 // ============================================================
 sb.auth.onAuthStateChange(async (event, sessie) => {
   console.log('Auth event:', event);
 
   // ── PASSWORD RECOVERY ──
-  // Klant heeft op reset-link in e-mail geklikt.
-  // Supabase maakt automatisch een sessie — we tonen het wachtwoord-scherm.
+  // Klant heeft op de reset-link geklikt. Supabase maakt een sessie aan.
+  // We tonen het wachtwoord-scherm — de app start hier nog niet.
   if (event === 'PASSWORD_RECOVERY') {
     toonWwScherm('reset', sessie?.user?.email || null);
     return;
   }
 
   // ── INITIAL_SESSION ──
-  // Dit event vuurt bij laden van de pagina, ook als er een sessie is.
-  // Op dit moment is de auth-token nog niet actief voor database-queries.
-  // We wachten op SIGNED_IN of TOKEN_REFRESHED.
+  // Vuurt direct bij laden vanuit localStorage, zonder netwerkverzoek.
+  // Het access token kan op dit moment verlopen zijn.
+  // De sessie wordt opgestart via refreshSession() onderaan dit bestand,
+  // wat TOKEN_REFRESHED vuurt zodra het netwerk reageert.
   if (event === 'INITIAL_SESSION') return;
 
-  // ── INGELOGD ──
+  // ── INGELOGD (SIGNED_IN of TOKEN_REFRESHED) ──
   if (sessie?.user) {
 
-    // Tijdens invite-flow is _inviteMode true.
-    // activeerAccount() in auth.js roept verwerkInlog zelf aan na afronding.
+    // Invite-flow: activeerAccount() in auth.js roept verwerkInlog zelf aan
     if (_inviteMode) {
       toonEmailOpWwScherm();
       return;
     }
 
-    // Tijdens reset-flow wacht de klant nog op wachtwoord-invoer.
+    // Reset-flow: klant is bezig met wachtwoord kiezen
     if (_wwFlow === 'reset') return;
 
-    // Voorkom dubbele aanroep (bijv. als TOKEN_REFRESHED en SIGNED_IN snel
-    // na elkaar vuren)
-    if (_verwerkInlogBezig) return;
+    // Voorkom dubbele aanroep
+    if (_verwerkInlogBezig || _appGestart) return;
 
     _verwerkInlogBezig = true;
     try {
@@ -74,21 +74,31 @@ sb.auth.onAuthStateChange(async (event, sessie) => {
 
   } else {
     // ── UITGELOGD ──
-    if (_inviteMode) return; // Invite-flow actief — loginscherm niet tonen
+    if (_inviteMode) return;
     verwerkUitlog();
   }
 });
 
 
 // ============================================================
+// SESSIE HERSTELLEN BIJ LADEN
+// refreshSession() maakt een netwerkverzoek en vuurt TOKEN_REFRESHED
+// als er een geldige sessie is — ongeacht of de token al verlopen was.
+// Als er geen sessie is, geeft het een fout die we stilletjes negeren.
+// ============================================================
+sb.auth.refreshSession().catch(() => {
+  // Geen actieve sessie — loginscherm is al zichtbaar
+});
+
+
+// ============================================================
 // VERWERK INLOG
-// Wordt aangeroepen na een succesvolle SIGNED_IN of TOKEN_REFRESHED,
-// en direct vanuit activeerAccount() na invite/reset-flow.
+// Laad klantrecord, branding, artikelen en keuringen.
 // ============================================================
 async function verwerkInlog(user) {
   _userId = user.id;
 
-  // Klantrecord ophalen (gooit een fout als de query mislukt)
+  // Klantrecord ophalen — gooit een fout als de query mislukt
   let klant;
   try {
     klant = await laadKlantRecord(_userId);
@@ -113,12 +123,13 @@ async function verwerkInlog(user) {
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn) logoutBtn.style.display = 'flex';
 
-  // Branding laden (kleuren, logo — gedefinieerd in branding.js)
+  // Branding laden (gedefinieerd in branding.js)
   await laadBranding(_bedrijfId);
 
-  // Overlays verbergen
+  // Overlays verbergen en app markeren als gestart
   document.getElementById('authOverlay').style.display = 'none';
   document.getElementById('wwOverlay').style.display   = 'none';
+  _appGestart = true;
 
   setBadge('ok', '✓ Verbonden');
 
@@ -130,15 +141,15 @@ async function verwerkInlog(user) {
 
 // ============================================================
 // VERWERK UITLOG
-// Reset alle staat en toont het loginscherm
+// Reset alle staat en toont het loginscherm.
 // ============================================================
 function verwerkUitlog() {
-  _userId    = null;
-  _klantId   = null;
-  _klantNaam = '';
-  _bedrijfId = null;
+  _userId     = null;
+  _klantId    = null;
+  _klantNaam  = '';
+  _bedrijfId  = null;
+  _appGestart = false;
 
-  // Data-staat resetten (gedefinieerd in data.js)
   if (typeof _artikelen !== 'undefined') _artikelen = [];
   if (typeof _keuringen !== 'undefined') _keuringen = [];
   if (typeof _certData  !== 'undefined') _certData  = null;
@@ -153,7 +164,7 @@ function verwerkUitlog() {
   document.getElementById('authOverlay').style.display = 'flex';
   document.getElementById('wwOverlay').style.display   = 'none';
 
-  // Branding resetten naar standaard Safety Green kleuren
+  // Branding resetten naar Safety Green standaard
   const root = document.documentElement;
   root.style.setProperty('--green',       '#5B9A2F');
   root.style.setProperty('--green-dark',  '#3D7A1A');
@@ -173,7 +184,6 @@ function verwerkUitlog() {
 
 // ============================================================
 // FOUTSCHERM
-// Toont een foutmelding en verbergt alle overlays
 // ============================================================
 function toonFoutScherm(bericht) {
   document.getElementById('authOverlay').style.display = 'none';
@@ -193,22 +203,3 @@ function setBadge(type, tekst) {
   b.className   = 'status-badge ' + type;
   b.textContent = tekst;
 }
-// ============================================================
-// OPSTART: controleer of er al een sessie is bij laden
-// onAuthStateChange mist soms de sessie na refresh op mobiel.
-// Daarom controleren we het hier zelf ook, direct bij laden.
-// ============================================================
-(async function controleerSessie() {
-  const { data } = await sb.auth.getSession();
-  if (data?.session?.user) {
-    if (_verwerkInlogBezig) return;
-    _verwerkInlogBezig = true;
-    try {
-      await verwerkInlog(data.session.user);
-    } catch (err) {
-      console.error('Fout bij opstart sessie-check:', err);
-    } finally {
-      _verwerkInlogBezig = false;
-    }
-  }
-})();
