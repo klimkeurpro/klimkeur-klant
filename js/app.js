@@ -193,3 +193,22 @@ function setBadge(type, tekst) {
   b.className   = 'status-badge ' + type;
   b.textContent = tekst;
 }
+// ============================================================
+// OPSTART: controleer of er al een sessie is bij laden
+// onAuthStateChange mist soms de sessie na refresh op mobiel.
+// Daarom controleren we het hier zelf ook, direct bij laden.
+// ============================================================
+(async function controleerSessie() {
+  const { data } = await sb.auth.getSession();
+  if (data?.session?.user) {
+    if (_verwerkInlogBezig) return;
+    _verwerkInlogBezig = true;
+    try {
+      await verwerkInlog(data.session.user);
+    } catch (err) {
+      console.error('Fout bij opstart sessie-check:', err);
+    } finally {
+      _verwerkInlogBezig = false;
+    }
+  }
+})();
