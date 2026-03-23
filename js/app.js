@@ -112,6 +112,7 @@ async function verwerkInlog(user) {
   if (logoutBtn) logoutBtn.style.display = 'flex';
 
   // Branding laden (gedefinieerd in branding.js)
+  toast('branding laden gestart...', 'ok', 5000);
   await laadBranding(_bedrijfId);
 
   toast('overlays verbergen...', 'ok', 5000);
