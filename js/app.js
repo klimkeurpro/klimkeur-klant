@@ -39,9 +39,14 @@ async function verwerkInlog(user) {
   _userId = user.id;
   toast('verwerkInlog gestart voor: ' + user.email, 'ok', 5000);
 
-  const klant = await laadKlantRecord(_userId);
-  toast('klant: ' + (klant ? klant.bedrijf : 'NIET GEVONDEN'), 'ok', 5000);
-
+ let klant = null;
+  try {
+    klant = await laadKlantRecord(_userId);
+    toast('klant: ' + (klant ? klant.bedrijf : 'NIET GEVONDEN'), 'ok', 5000);
+  } catch(e) {
+    toast('CRASH laadKlantRecord: ' + e.message, 'error', 8000);
+    return;
+  }
   if (!klant) {
     toonFoutScherm('Je account is nog niet gekoppeld aan een klantrecord. Neem contact op met Safety Green.');
     return;
