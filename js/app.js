@@ -1,136 +1,122 @@
 'use strict';
 
 // ============================================================
-// app.js — Startpunt van de KlantKeur app
-//
-// Volgorde in index.html:
-//   config.js → auth.js → branding.js → data.js → ui.js → app.js
-//
-// Hoe de app start:
-//
-//   Bij handmatig inloggen:
-//     authLogin() → signInWithPassword → SIGNED_IN event → verwerkInlog
-//
-//   Bij page refresh (sessie-herstel):
-//     refreshSession() onderaan dit bestand → TOKEN_REFRESHED event → verwerkInlog
-//     (INITIAL_SESSION wordt genegeerd: token is daar mogelijk verlopen)
-//
-//   Na invite of wachtwoord-reset:
-//     activeerAccount() in auth.js roept verwerkInlog zelf aan
+// app.js — Initialisatie en onAuthStateChange
+// Dit bestand wordt als laatste geladen en knoopt alles samen:
+// config.js → auth.js → branding.js → data.js → ui.js → app.js
 // ============================================================
 
-// Voorkomt dat verwerkInlog gelijktijdig twee keer loopt
-let _verwerkInlogBezig = false;
-
-// Voorkomt dat TOKEN_REFRESHED de app opnieuw laadt als SIGNED_IN al klaar is
-let _appGestart = false;
-
+// Bescherming tegen dubbele uitvoering
+let _appGeladen   = false;  // true zodra verwerkInlog succesvol is afgerond
+let _verwerkBezig = false;  // true zolang verwerkInlog draait
 
 // ============================================================
-// AUTH STATE CHANGE
+// START: onAuthStateChange
+// Supabase roept dit aan zodra de inlogstatus verandert:
+// - bij laden van de pagina (INITIAL_SESSION)
+// - na inloggen (SIGNED_IN)
+// - na uitloggen (SIGNED_OUT)
+// - bij token verversing (TOKEN_REFRESHED)
+// - na account activeren via invite-link
+// - na klikken op wachtwoord-reset-link in e-mail
 // ============================================================
 sb.auth.onAuthStateChange(async (event, sessie) => {
   console.log('Auth event:', event);
 
   // ── PASSWORD RECOVERY ──
-  // Klant heeft op de reset-link geklikt. Supabase maakt een sessie aan.
-  // We tonen het wachtwoord-scherm — de app start hier nog niet.
   if (event === 'PASSWORD_RECOVERY') {
-    toonWwScherm('reset', sessie?.user?.email || null);
+    console.log('Password recovery flow gedetecteerd');
+    const email = sessie?.user?.email || null;
+    toonWwScherm('reset', email);
     return;
   }
 
-  // ── INITIAL_SESSION ──
-  // Vuurt direct bij laden vanuit localStorage, zonder netwerkverzoek.
-  // Het access token kan op dit moment verlopen zijn.
-  // De sessie wordt opgestart via refreshSession() onderaan dit bestand,
-  // wat TOKEN_REFRESHED vuurt zodra het netwerk reageert.
-  if (event === 'INITIAL_SESSION') return;
-
-  // ── INGELOGD (SIGNED_IN of TOKEN_REFRESHED) ──
+  // ── INGELOGD ──
   if (sessie?.user) {
 
-    // Invite-flow: activeerAccount() in auth.js roept verwerkInlog zelf aan
+    // Invite-flow: wacht tot activeerAccount() klaar is
     if (_inviteMode) {
+      console.log('SIGNED_IN tijdens invite-flow — wachten op activering');
       toonEmailOpWwScherm();
       return;
     }
 
     // Reset-flow: klant is bezig met wachtwoord kiezen
-    if (_wwFlow === 'reset') return;
+    if (_wwFlow === 'reset') {
+      console.log('Sessie-event tijdens reset-flow — wachten op wachtwoord keuze');
+      return;
+    }
 
-    // Voorkom dubbele aanroep
-    if (_verwerkInlogBezig || _appGestart) return;
+    // App is al geladen (bijv. TOKEN_REFRESHED na page load)
+    // → geen actie nodig, sessie is automatisch ververst
+    if (_appGeladen) {
+      console.log('App al geladen, token ververst — geen actie nodig');
+      return;
+    }
 
-    _verwerkInlogBezig = true;
+    // Voorkom dubbele uitvoering als twee events snel na elkaar komen
+    if (_verwerkBezig) {
+      console.log('verwerkInlog is al bezig — overgeslagen');
+      return;
+    }
+
     try {
+      _verwerkBezig = true;
       await verwerkInlog(sessie.user);
+      _appGeladen = true;
     } catch (err) {
       console.error('Fout in verwerkInlog:', err);
-      toonFoutScherm('Er is iets misgegaan bij het inloggen. Probeer het opnieuw.');
+      toonFoutScherm('Er ging iets mis bij het laden. Probeer de pagina te vernieuwen.');
     } finally {
-      _verwerkInlogBezig = false;
+      _verwerkBezig = false;
     }
 
   } else {
     // ── UITGELOGD ──
-    if (_inviteMode) return;
+    if (_inviteMode) {
+      return;
+    }
     verwerkUitlog();
   }
 });
 
-
-// ============================================================
-// SESSIE HERSTELLEN BIJ LADEN
-// refreshSession() maakt een netwerkverzoek en vuurt TOKEN_REFRESHED
-// als er een geldige sessie is — ongeacht of de token al verlopen was.
-// Als er geen sessie is, geeft het een fout die we stilletjes negeren.
-// ============================================================
-sb.auth.refreshSession().catch(() => {
-  // Geen actieve sessie — loginscherm is al zichtbaar
-});
-
-
 // ============================================================
 // VERWERK INLOG
-// Laad klantrecord, branding, artikelen en keuringen.
+// Laad klantrecord, branding, artikelen en keuringen
 // ============================================================
 async function verwerkInlog(user) {
   _userId = user.id;
 
-  // Klantrecord ophalen — gooit een fout als de query mislukt
-  let klant;
-  try {
-    klant = await laadKlantRecord(_userId);
-  } catch (err) {
-    toonFoutScherm('Fout bij ophalen van je gegevens. Probeer de pagina te herladen.');
-    return;
-  }
+  // Klantrecord ophalen (gedefinieerd in auth.js)
+  const klant = await laadKlantRecord(_userId);
 
   if (!klant) {
+    // Geen klantrecord gevonden — toon foutmelding
     toonFoutScherm('Je account is nog niet gekoppeld aan een klantrecord. Neem contact op met Safety Green.');
     return;
   }
 
+  // Globale staat instellen (gebruikt door data.js en ui.js)
   _klantId   = klant.id;
   _klantNaam = klant.contactpersoon || klant.bedrijf || '';
   _bedrijfId = klant.bedrijf_id || null;
 
-  // Header bijwerken
-  const welkomEl = document.getElementById('headerWelkom');
-  if (welkomEl) welkomEl.textContent = 'Welkom, ' + _klantNaam;
+  // Naam tonen in header
+  const headerSub = document.getElementById('headerSub');
+  if (headerSub && _klantNaam) headerSub.textContent = _klantNaam;
 
+  // Uitlogknop tonen
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn) logoutBtn.style.display = 'flex';
 
   // Branding laden (gedefinieerd in branding.js)
   await laadBranding(_bedrijfId);
 
-  // Overlays verbergen en app markeren als gestart
+  // Alle overlays verbergen
   document.getElementById('authOverlay').style.display = 'none';
   document.getElementById('wwOverlay').style.display   = 'none';
-  _appGestart = true;
 
+  // Verbindingsstatus tonen
   setBadge('ok', '✓ Verbonden');
 
   // Data laden (gedefinieerd in data.js)
@@ -138,68 +124,68 @@ async function verwerkInlog(user) {
   await laadKeuringen();
 }
 
-
 // ============================================================
 // VERWERK UITLOG
-// Reset alle staat en toont het loginscherm.
+// Reset UI naar beginstand
 // ============================================================
 function verwerkUitlog() {
-  _userId     = null;
-  _klantId    = null;
-  _klantNaam  = '';
-  _bedrijfId  = null;
-  _appGestart = false;
+  // Globale staat wissen
+  _userId    = null;
+  _klantId   = null;
+  _klantNaam = '';
+  _bedrijfId = null;
+  _artikelen = [];
+  _keuringen = [];
+  _certData  = null;
 
-  if (typeof _artikelen !== 'undefined') _artikelen = [];
-  if (typeof _keuringen !== 'undefined') _keuringen = [];
-  if (typeof _certData  !== 'undefined') _certData  = null;
+  // Vlaggen resetten zodat opnieuw inloggen weer werkt
+  _appGeladen   = false;
+  _verwerkBezig = false;
 
+  // UI resetten
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn) logoutBtn.style.display = 'none';
-
-  const welkomEl = document.getElementById('headerWelkom');
-  if (welkomEl) welkomEl.textContent = '';
 
   // Loginscherm tonen
   document.getElementById('authOverlay').style.display = 'flex';
   document.getElementById('wwOverlay').style.display   = 'none';
 
-  // Branding resetten naar Safety Green standaard
+  // Standaard kleuren herstellen
   const root = document.documentElement;
   root.style.setProperty('--green',       '#5B9A2F');
   root.style.setProperty('--green-dark',  '#3D7A1A');
   root.style.setProperty('--green-light', '#8BC53F');
 
-  // Loginvelden leegmaken
+  // Formulieren leegmaken
   const authEmail = document.getElementById('authEmail');
   const authPass  = document.getElementById('authPassword');
   if (authEmail) authEmail.value = '';
   if (authPass)  authPass.value  = '';
 
-  // Wachtwoord-vergeten bevestiging verbergen
+  // Reset-bevestiging verbergen (als die zichtbaar was)
   const bevestiging = document.getElementById('wwVergetenBevestiging');
   if (bevestiging) bevestiging.style.display = 'none';
 }
 
-
 // ============================================================
-// FOUTSCHERM
+// FOUTSCHERM (als klantrecord niet gevonden wordt)
 // ============================================================
 function toonFoutScherm(bericht) {
   document.getElementById('authOverlay').style.display = 'none';
   document.getElementById('wwOverlay').style.display   = 'none';
+
+  // Toon fout als toast én in de UI
   toast(bericht, 'error', 8000);
   setBadge('err', '✗ Fout');
-  console.error('Inlogfout:', bericht);
+  console.error('Fout bij inloggen:', bericht);
 }
 
-
 // ============================================================
-// STATUS BADGE
+// BADGE (verbindingsstatus)
 // ============================================================
 function setBadge(type, tekst) {
   const b = document.getElementById('statusBadge');
   if (!b) return;
-  b.className   = 'status-badge ' + type;
+  b.className  = 'status-badge ' + type;
   b.textContent = tekst;
 }
