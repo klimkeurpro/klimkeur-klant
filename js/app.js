@@ -102,7 +102,8 @@ async function verwerkInlog(user) {
   _klantId   = klant.id;
   _klantNaam = klant.contactpersoon || klant.bedrijf || '';
   _bedrijfId = klant.bedrijf_id || null;
-
+  toast('staat ingesteld: ' + _klantNaam, 'ok', 5000);
+  
   // Klantnaam tonen in header (welkomsttekst)
   const welkomEl = document.getElementById('headerWelkom');
   if (welkomEl) welkomEl.textContent = 'Welkom, ' + (_klantNaam || '');
