@@ -148,18 +148,29 @@ async function authLogin() {
   foutEl.style.display = 'none';
 
   try {
-    const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
 
     if (error) {
       console.error('Login fout:', error);
       const foutmeldingen = {
         'Invalid login credentials': 'E-mail of wachtwoord is onjuist.',
         'Email not confirmed':       'Bevestig eerst je e-mailadres via de ontvangen mail.',
-        'Too many requests':         'Te veel pogingen. Wacht even en probeer opnieuw.',
+        'Too many requests':         'Te vaak geprobeerd. Wacht even en probeer opnieuw.',
       };
       toonAuthFout(foutmeldingen[error.message] || error.message);
+      return;
     }
-    // Bij succes: onAuthStateChange in app.js neemt het over
+
+    // Inlog gelukt — zelf de app starten, niet wachten op onAuthStateChange.
+    // Op mobiel na schermvergrendeling vuurt dat event soms niet.
+    if (data?.user && !_verwerkInlogBezig) {
+      _verwerkInlogBezig = true;
+      try {
+        await verwerkInlog(data.user);
+      } finally {
+        _verwerkInlogBezig = false;
+      }
+    }
   } catch (err) {
     console.error('Onverwachte login fout:', err);
     toonAuthFout('Er is iets misgegaan. Probeer het opnieuw.');
