@@ -114,6 +114,7 @@ async function verwerkInlog(user) {
   // Branding laden (gedefinieerd in branding.js)
   await laadBranding(_bedrijfId);
 
+  toast('overlays verbergen...', 'ok', 5000);
   // Alle overlays verbergen
   document.getElementById('authOverlay').style.display = 'none';
   document.getElementById('wwOverlay').style.display   = 'none';
