@@ -8,6 +8,9 @@
 let _certData      = null;
 let _actieveFilter = 'alle';
 
+// Sortering artikelentabel
+let _artSort = { col: 'omschrijving', asc: true };
+
 // ============================================================
 // HELPERS
 // ============================================================
@@ -35,18 +38,29 @@ function switchTab(naam, knop) {
 }
 
 // ============================================================
-// ARTIKELEN RENDEREN
+// ARTIKELEN RENDEREN — sorteerbare tabel
 // ============================================================
+function sortArtikelen(col) {
+  if (_artSort.col === col) {
+    _artSort.asc = !_artSort.asc;
+  } else {
+    _artSort.col = col;
+    _artSort.asc = true;
+  }
+  renderArtikelen();
+}
+
 function renderArtikelen() {
-  const lijst  = el('artLijst');
   const totaal = _artikelen.length;
   const goed   = _artikelen.filter(a => a.status === 'goedgekeurd').length;
   const nodig  = _artikelen.filter(a => keuringStatus(a.inGebruik) === 'overdue').length;
 
-  el('artTeller').textContent  = totaal;
-  el('statTotaal').textContent = totaal;
-  el('statGoed').textContent   = goed;
+  el('artTeller').textContent   = totaal;
+  el('statTotaal').textContent  = totaal;
+  el('statGoed').textContent    = goed;
   el('statKeuring').textContent = nodig;
+
+  const lijst = el('artLijst');
 
   if (totaal === 0) {
     lijst.innerHTML = `<div class="empty-state">
@@ -59,50 +73,63 @@ function renderArtikelen() {
     return;
   }
 
-  // Sorteer: keuring nodig bovenaan
-  const prio = { overdue: 0, soon: 1, ok: 2 };
+  // Kopieer en sorteer
   const gesorteerd = [..._artikelen].sort((a, b) => {
-    const ka = keuringStatus(a.inGebruik) || 'ok';
-    const kb = keuringStatus(b.inGebruik) || 'ok';
-    if ((prio[ka] || 2) !== (prio[kb] || 2)) return (prio[ka] || 2) - (prio[kb] || 2);
-    return (b.toegevoegd || '').localeCompare(a.toegevoegd || '');
+    let va = '', vb = '';
+    if (_artSort.col === 'status') {
+      // Goedgekeurd → afgekeurd → rest
+      const rang = { goedgekeurd: 0, afgekeurd: 1 };
+      va = rang[a.status] !== undefined ? rang[a.status] : 2;
+      vb = rang[b.status] !== undefined ? rang[b.status] : 2;
+      return _artSort.asc ? va - vb : vb - va;
+    }
+    va = String(a[_artSort.col] || '').toLowerCase();
+    vb = String(b[_artSort.col] || '').toLowerCase();
+    const cmp = va.localeCompare(vb, 'nl');
+    return _artSort.asc ? cmp : -cmp;
   });
 
-  lijst.innerHTML = gesorteerd.map(art => {
+  const kolommen = [
+    { key: 'omschrijving', label: 'Omschrijving' },
+    { key: 'merk',         label: 'Merk' },
+    { key: 'materiaal',    label: 'Materiaal' },
+    { key: 'serienummer',  label: 'Serienummer' },
+    { key: 'status',       label: 'Status' },
+  ];
+
+  const thHtml = kolommen.map(k => {
+    const actief = _artSort.col === k.key;
+    const pijl   = actief ? (_artSort.asc ? ' ▲' : ' ▼') : ' ▲';
+    return `<th onclick="sortArtikelen('${k.key}')" style="cursor:pointer;user-select:none;white-space:nowrap;${actief ? 'color:var(--green)' : ''}">${k.label}<span style="font-size:10px;opacity:${actief ? '1' : '0.3'}">${pijl}</span></th>`;
+  }).join('') + '<th style="width:70px"></th>';
+
+  const rijen = gesorteerd.map(art => {
     const idx = _artikelen.indexOf(art);
     const ks  = keuringStatus(art.inGebruik);
     const kt  = keuringTekst(ks, art.inGebruik);
 
     const statusBadge = art.status === 'goedgekeurd'
-      ? '<span class="badge badge-green" style="font-size:11px;padding:2px 8px;">✓ Goed</span>'
+      ? '<span class="badge badge-green" style="font-size:11px;padding:2px 8px;white-space:nowrap">✓ Goed</span>'
       : art.status === 'afgekeurd'
-      ? '<span class="badge badge-red" style="font-size:11px;padding:2px 8px;">✗ Afgekeurd</span>'
+      ? '<span class="badge badge-red" style="font-size:11px;padding:2px 8px;white-space:nowrap">✗ Afgekeurd</span>'
+      : '<span style="font-size:11px;color:var(--text-muted)">—</span>';
+
+    const keurBadge = kt
+      ? `<div style="margin-top:3px"><span class="keur-badge ${ks}" style="font-size:10px">${kt}</span></div>`
       : '';
 
-    return `<div class="mat-item">
-      <div class="mat-item-top">
-        <div style="flex:1;min-width:0">
-          <div class="mat-naam">${esc(art.omschrijving)} ${statusBadge}</div>
-          ${art.merk ? `<div class="mat-merk">${esc(art.merk)}</div>` : ''}
-          <div class="mat-meta">
-            <span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="4" rx="1"/><rect x="2" y="10" width="20" height="4" rx="1"/><rect x="2" y="16" width="20" height="4" rx="1"/></svg>
-              <span class="mat-sn">${esc(art.serienummer)}</span>
-            </span>
-            ${art.inGebruik ? `<span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              Sinds: ${formatDatum(art.inGebruik)}
-            </span>` : ''}
-            ${art.fabrJaar ? `<span style="color:var(--text-muted)">Prod: ${art.fabrJaar}${art.fabrMaand ? '-' + art.fabrMaand : ''}</span>` : ''}
-            ${art.gebruiker ? `<span style="color:var(--text-muted)">👤 ${esc(art.gebruiker)}</span>` : ''}
-          </div>
-          ${art.opmerking ? `<div class="mat-opmerking">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            ${esc(art.opmerking)}
-          </div>` : ''}
-          ${kt ? `<div style="margin-top:6px"><span class="keur-badge ${ks}">${kt}</span></div>` : ''}
-        </div>
-        <div class="item-actions">
+    return `<tr>
+      <td>
+        <div style="font-weight:500">${esc(art.omschrijving)}</div>
+        ${art.gebruiker ? `<div style="font-size:11px;color:var(--text-muted)">👤 ${esc(art.gebruiker)}</div>` : ''}
+        ${keurBadge}
+      </td>
+      <td style="color:var(--text-secondary)">${esc(art.merk || '—')}</td>
+      <td style="color:var(--text-secondary)">${esc(art.materiaal || '—')}</td>
+      <td style="font-family:monospace;font-size:12px">${esc(art.serienummer || '—')}</td>
+      <td>${statusBadge}</td>
+      <td>
+        <div style="display:flex;gap:4px;justify-content:flex-end">
           ${!art.keuringId ? `<button class="icon-btn" title="Bewerken" onclick="openEdit(${idx})">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           </button>` : ''}
@@ -110,9 +137,17 @@ function renderArtikelen() {
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
           </button>` : ''}
         </div>
-      </div>
-    </div>`;
+      </td>
+    </tr>`;
   }).join('');
+
+  lijst.innerHTML = `
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+      <table style="min-width:600px;width:100%;border-collapse:collapse">
+        <thead><tr style="border-bottom:2px solid var(--border)">${thHtml}</tr></thead>
+        <tbody>${rijen}</tbody>
+      </table>
+    </div>`;
 }
 
 // ============================================================
@@ -124,7 +159,7 @@ async function voegToe() {
   const omschr = el('fOmschr').value.trim();
   const sn     = el('fSN').value.trim();
   if (!omschr) { toast('Vul een omschrijving in', 'error'); el('fOmschr').focus(); return; }
-  
+
   if (_artikelen.some(a => a.serienummer.toLowerCase() === sn.toLowerCase())) {
     if (!confirm(`Serienummer "${sn}" staat al in je lijst. Toch toevoegen?`)) return;
   }
@@ -303,7 +338,28 @@ function toonCertificaat(keuring) {
           Keurmeester: ${esc(c.keurmeester || '—')}${c.bedrijf ? ' · ' + esc(c.bedrijf) : ''}
         </div>
       </div>
-      <span class="badge" style="background:rgba(255,255,255,.2);color:#fff">${c.afgerond ? '✓ Afgerond' : 'Concept'}</span>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="badge" style="background:rgba(255,255,255,.2);color:#fff">${c.afgerond ? '✓ Afgerond' : 'Concept'}</span>
+        <button onclick="downloadCertPDF()" style="
+          background:rgba(255,255,255,0.15);
+          border:1px solid rgba(255,255,255,0.3);
+          color:#fff;
+          padding:6px 12px;
+          border-radius:6px;
+          cursor:pointer;
+          font-size:12px;
+          display:flex;
+          align-items:center;
+          gap:6px;
+        ">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          PDF
+        </button>
+      </div>
     </div>`;
 
   const goed = items.filter(i => i.status === 'goedgekeurd').length;
@@ -326,7 +382,7 @@ function toonCertificaat(keuring) {
     filterEl.style.display = 'none';
   }
 
-   renderCertItems(items);
+  renderCertItems(items);
 }
 
 function setCertFilter(waarde, knop) {
@@ -338,13 +394,9 @@ function setCertFilter(waarde, knop) {
 
 function filterCert() {
   if (!_certData) return;
-  const q     = '';
-  let items   = _certData.items;
+  let items = _certData.items;
   if (_actieveFilter !== 'alle') items = items.filter(i => (i.gebruiker || '') === _actieveFilter);
-  if (q) items = items.filter(i =>
-    [i.omschrijving, i.serienummer, i.merk, i.materiaal].some(v => (v || '').toLowerCase().includes(q))
-  );
-  renderCertItems(items, q);
+  renderCertItems(items);
 }
 
 function renderCertItems(items, zoek) {
@@ -388,7 +440,8 @@ function renderCertItems(items, zoek) {
                 ${i.serienummer ? 'SN: ' + hl(i.serienummer) : ''}
                 ${i.merk ? ' · ' + hl(i.merk) : ''}
                 ${i.materiaal ? ' · ' + hl(i.materiaal) : ''}
-                ${i.fabr_jaar ? ' · Prod: ' + i.fabr_jaar + (i.fabr_maand ? '-' + String(i.fabr_maand).padStart(2,'0') : '') : ''}${i.in_gebruik ? ' · Sinds: ' + formatDatum(i.in_gebruik) : ''}
+                ${i.fabr_jaar ? ' · Prod: ' + i.fabr_jaar + (i.fabr_maand ? '-' + String(i.fabr_maand).padStart(2,'0') : '') : ''}
+                ${i.in_gebruik ? ' · Sinds: ' + formatDatum(i.in_gebruik) : ''}
               </div>
               ${i.opmerking ? `<div style="font-size:12px;color:var(--warning);margin-top:3px">⚠ ${esc(i.opmerking)}</div>` : ''}
             </div>
@@ -397,6 +450,178 @@ function renderCertItems(items, zoek) {
         }).join('')}
       </div>
     </div>`).join('');
+}
+
+// ============================================================
+// PDF DOWNLOAD — certificaat als PDF
+// Vereist: jsPDF geladen via script-tag in index.html
+// ============================================================
+function downloadCertPDF() {
+  if (!_certData) { toast('Geen certificaat beschikbaar', 'error'); return; }
+  if (typeof window.jspdf === 'undefined') {
+    toast('PDF-bibliotheek nog niet geladen, probeer opnieuw', 'error');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const c     = _certData.certificaat;
+  const items = _certData.items;
+
+  // Filter op actieve gebruiker als er een filter actief is
+  const zichtbareItems = _actieveFilter === 'alle'
+    ? items
+    : items.filter(i => (i.gebruiker || '') === _actieveFilter);
+
+  const doc      = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageW    = doc.internal.pageSize.getWidth();
+  const pageH    = doc.internal.pageSize.getHeight();
+  const margin   = 14;
+  const groen    = [91, 154, 47];
+  const donker   = [30, 30, 30];
+  const grijs    = [100, 100, 100];
+  const lichtgrijs = [220, 220, 220];
+  let y          = margin;
+
+  // ── HEADER ──
+  doc.setFillColor(...groen);
+  doc.rect(0, 0, pageW, 22, 'F');
+
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(255, 255, 255);
+  doc.text('KEURINGS-CERTIFICAAT', margin, 14);
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text(c.bedrijf || '', pageW - margin, 14, { align: 'right' });
+
+  y = 30;
+
+  // ── CERTIFICAATINFO ──
+  doc.setFontSize(9);
+  doc.setTextColor(...donker);
+
+  const infoLinks = [
+    ['Certificaatnummer:', c.nr || '—'],
+    ['Keuringsdatum:', c.datum ? formatDatum(c.datum) : '—'],
+    ['Keurmeester:', c.keurmeester || '—'],
+    ['Eigenaar:', _klantNaam || '—'],
+  ];
+
+  infoLinks.forEach(([label, waarde]) => {
+    doc.setFont('helvetica', 'bold');
+    doc.text(label, margin, y);
+    doc.setFont('helvetica', 'normal');
+    doc.text(waarde, margin + 38, y);
+    y += 5.5;
+  });
+
+  // Status badge tekst
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...groen);
+  doc.text(c.afgerond ? '✓ Afgerond' : 'Concept', pageW - margin, 32, { align: 'right' });
+
+  y += 4;
+  doc.setDrawColor(...groen);
+  doc.setLineWidth(0.6);
+  doc.line(margin, y, pageW - margin, y);
+  y += 6;
+
+  // ── STATISTIEKEN ──
+  const goed = zichtbareItems.filter(i => i.status === 'goedgekeurd').length;
+  const afk  = zichtbareItems.filter(i => i.status === 'afgekeurd').length;
+
+  doc.setFontSize(8);
+  doc.setTextColor(...grijs);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`${zichtbareItems.length} items  ·  ${goed} goedgekeurd  ·  ${afk} afgekeurd`, margin, y);
+  y += 8;
+
+  // ── TABEL HEADER ──
+  const colW = { omschr: 62, merk: 28, sn: 35, status: 28, gebruiker: 28 };
+  const rowH = 6.5;
+
+  doc.setFillColor(...groen);
+  doc.rect(margin, y, pageW - margin * 2, rowH, 'F');
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(255, 255, 255);
+
+  let x = margin + 2;
+  doc.text('Omschrijving',  x, y + 4.5); x += colW.omschr;
+  doc.text('Merk',          x, y + 4.5); x += colW.merk;
+  doc.text('Serienummer',   x, y + 4.5); x += colW.sn;
+  doc.text('Gebruiker',     x, y + 4.5); x += colW.gebruiker;
+  doc.text('Status',        x, y + 4.5);
+  y += rowH;
+
+  // ── TABEL RIJEN ──
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+
+  zichtbareItems.forEach((item, i) => {
+    // Nieuwe pagina als nodig
+    if (y + rowH > pageH - 16) {
+      doc.addPage();
+      y = margin;
+    }
+
+    // Achtergrond afwisselend
+    if (i % 2 === 0) {
+      doc.setFillColor(245, 248, 242);
+      doc.rect(margin, y, pageW - margin * 2, rowH, 'F');
+    }
+
+    const statusTekst = item.status === 'goedgekeurd' ? 'Goedgekeurd'
+      : item.status === 'afgekeurd'
+        ? 'Afgekeurd' + (item.afkeurcode ? ' (' + item.afkeurcode + ')' : '')
+        : '—';
+
+    doc.setTextColor(...donker);
+    x = margin + 2;
+
+    // Omschrijving — afkappen als te lang
+    const omschr = (item.omschrijving || '').substring(0, 32);
+    doc.text(omschr,                              x, y + 4.5); x += colW.omschr;
+    doc.text((item.merk || '').substring(0,16),   x, y + 4.5); x += colW.merk;
+    doc.text((item.serienummer || '').substring(0,18), x, y + 4.5); x += colW.sn;
+    doc.text((item.gebruiker || '').substring(0,16),   x, y + 4.5); x += colW.gebruiker;
+
+    // Statuskleur
+    if (item.status === 'goedgekeurd') doc.setTextColor(...groen);
+    else if (item.status === 'afgekeurd') doc.setTextColor(192, 57, 43);
+    else doc.setTextColor(...grijs);
+
+    doc.text(statusTekst.substring(0, 20), x, y + 4.5);
+    doc.setTextColor(...donker);
+
+    // Scheidingslijn
+    doc.setDrawColor(...lichtgrijs);
+    doc.setLineWidth(0.2);
+    doc.line(margin, y + rowH, pageW - margin, y + rowH);
+
+    y += rowH;
+  });
+
+  // ── FOOTER op elke pagina ──
+  const totaalPaginas = doc.internal.getNumberOfPages();
+  for (let p = 1; p <= totaalPaginas; p++) {
+    doc.setPage(p);
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...grijs);
+    doc.text(
+      `${c.bedrijf || ''} · Certificaat ${c.nr || ''} · Pagina ${p}/${totaalPaginas}`,
+      pageW / 2, pageH - 6, { align: 'center' }
+    );
+    doc.setDrawColor(...groen);
+    doc.setLineWidth(0.4);
+    doc.line(margin, pageH - 9, pageW - margin, pageH - 9);
+  }
+
+  const bestandsnaam = `Certificaat_${(c.nr || 'keuring').replace(/[^a-zA-Z0-9]/g, '_')}_${c.datum || ''}.pdf`;
+  doc.save(bestandsnaam);
+  toast('PDF gedownload');
 }
 
 // ============================================================
