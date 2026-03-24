@@ -202,18 +202,34 @@ function genId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 }
 
-function keuringStatus(inGebruik) {
-  if (!inGebruik) return null;
-  const maanden = (Date.now() - new Date(inGebruik + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24 * 30.44);
+// ============================================================
+// KEURING STATUS BEREKENING
+//
+// De 12-maanden teller loopt vanaf de meest recente keuringdatum.
+// Als een artikel gekeurd is (keuringDatum aanwezig), overschrijft
+// die datum de inGebruik-datum als startpunt.
+// Voorbeeld: in gebruik 8 maanden geleden, maar gisteren gekeurd
+// → teller begint opnieuw → status 'ok', keuring over 12 maanden.
+// ============================================================
+function keuringStatus(inGebruik, keuringDatum) {
+  // Startpunt = meest recente van inGebruik en keuringDatum
+  const start = keuringDatum && keuringDatum > (inGebruik || '')
+    ? keuringDatum
+    : inGebruik;
+  if (!start) return null;
+  const maanden = (Date.now() - new Date(start + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24 * 30.44);
   if (maanden >= 12) return 'overdue';
   if (maanden >= 10) return 'soon';
   return 'ok';
 }
 
-function keuringTekst(status, inGebruik) {
-  if (!status || !inGebruik) return null;
-  const maanden = Math.round((Date.now() - new Date(inGebruik + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24 * 30.44));
-  if (status === 'overdue') return `⚠ Keuring nodig (${maanden} mnd)`;
+function keuringTekst(status, inGebruik, keuringDatum) {
+  const start = keuringDatum && keuringDatum > (inGebruik || '')
+    ? keuringDatum
+    : inGebruik;
+  if (!status || !start) return null;
+  const maanden = Math.round((Date.now() - new Date(start + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24 * 30.44));
+  if (status === 'overdue') return `⚠ Keuring nodig (${maanden} mnd geleden gekeurd)`;
   if (status === 'soon')    return `⏰ Keuring over ~${12 - maanden} mnd`;
   return `✓ Keuring over ${12 - maanden} mnd`;
 }
