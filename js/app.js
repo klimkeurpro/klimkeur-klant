@@ -74,14 +74,16 @@ async function verwerkInlog(user) {
   _klantNaam = klant.contactpersoon || klant.bedrijf || '';
   _bedrijfId = klant.bedrijf_id || null;
 
-  const headerSub = document.getElementById('headerSub');
-  if (headerSub && _klantNaam) headerSub.textContent = _klantNaam;
-
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn) logoutBtn.style.display = 'flex';
 
   console.log('laadBranding...');
   await laadBranding(_bedrijfId);
+
+  // Naam NA branding zetten, want laadBranding overschrijft headerSub
+  // met de bedrijfsnaam. De klantnaam is belangrijker hier.
+  const headerSub = document.getElementById('headerSub');
+  if (headerSub && _klantNaam) headerSub.textContent = _klantNaam;
 
   document.getElementById('authOverlay').style.display = 'none';
   document.getElementById('wwOverlay').style.display   = 'none';
