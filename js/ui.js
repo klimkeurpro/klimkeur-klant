@@ -7,7 +7,7 @@
 let _certData      = null;
 let _actieveFilter = 'alle';
 let _artSort       = { col: 'omschrijving', asc: true };
-let _toonAfgevoerd = false; // standaard verborgen
+let _toonAfgevoerd = false;
 
 // ============================================================
 // HELPERS
@@ -36,6 +36,21 @@ function switchTab(naam, knop) {
 }
 
 // ============================================================
+// TOEVOEGFORMULIER IN/UITKLAPPEN
+// ============================================================
+function toggleToevoegForm() {
+  const form = el('toevoegForm');
+  const chev = el('toevoegChev');
+  const open = form.style.display !== 'none';
+  form.style.display = open ? 'none' : 'block';
+  chev.style.transform = open ? 'rotate(-90deg)' : 'rotate(0deg)';
+  if (!open) {
+    // Formulier net geopend — focus op omschrijving
+    setTimeout(() => el('fOmschr')?.focus(), 50);
+  }
+}
+
+// ============================================================
 // ARTIKELEN RENDEREN — sorteerbare tabel
 // ============================================================
 function sortArtikelen(col) {
@@ -50,7 +65,6 @@ function toggleAfgevoerd() {
 }
 
 function renderArtikelen() {
-  // Splits actief en afgevoerd
   const actief    = _artikelen.filter(a => !a.afgevoerd);
   const afgevoerd = _artikelen.filter(a => a.afgevoerd);
 
@@ -74,15 +88,13 @@ function renderArtikelen() {
         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
       </svg>
       <h3>Nog geen artikelen</h3>
-      <p>Voeg je klimmateriaal toe via het formulier hierboven.</p>
+      <p>Klik op "Artikel toevoegen" hierboven om te beginnen.</p>
     </div>`;
     return;
   }
 
-  // Te tonen lijst
   const teTonenLijst = _toonAfgevoerd ? afgevoerd : actief;
 
-  // Sorteer
   const gesorteerd = [...teTonenLijst].sort((a, b) => {
     if (_artSort.col === 'status') {
       const rang = { goedgekeurd: 0, afgekeurd: 1 };
@@ -107,7 +119,7 @@ function renderArtikelen() {
     const actief = _artSort.col === k.key;
     const pijl   = actief ? (_artSort.asc ? ' ▲' : ' ▼') : ' ▲';
     return `<th onclick="sortArtikelen('${k.key}')" style="cursor:pointer;user-select:none;white-space:nowrap;${actief ? 'color:var(--green)' : ''}">${k.label}<span style="font-size:10px;opacity:${actief ? '1' : '0.3'}">${pijl}</span></th>`;
-  }).join('') + '<th style="width:80px"></th>';
+  }).join('') + '<th style="width:100px"></th>';
 
   const rijen = gesorteerd.length === 0
     ? `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">Geen ${_toonAfgevoerd ? 'afgevoerde' : 'actieve'} artikelen</td></tr>`
@@ -129,16 +141,13 @@ function renderArtikelen() {
           ? `<div style="margin-top:3px"><span class="keur-badge ${ks}" style="font-size:10px">${kt}</span></div>`
           : '';
 
-        // Acties: afgevoerde artikelen kunnen niet bewerkt/verwijderd worden
         const acties = art.afgevoerd
           ? `<span style="font-size:11px;color:var(--text-muted);font-style:italic">Afgevoerd</span>`
-          : `<div style="display:flex;gap:4px;justify-content:flex-end">
+          : `<div style="display:flex;gap:4px;justify-content:flex-end;align-items:center;">
               ${!art.keuringId ? `<button class="icon-btn" title="Bewerken" onclick="openEdit(${idx})">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               </button>` : ''}
               <button onclick="openAfvoerDialog(${idx})" style="background:rgba(243,156,18,0.15);border:1px solid var(--warning);color:var(--warning);padding:3px 8px;border-radius:4px;font-size:11px;cursor:pointer;white-space:nowrap;">Afvoeren</button>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-              </button>
             </div>`;
 
         return `<tr style="${art.afgevoerd ? 'opacity:0.5' : ''}">
@@ -155,7 +164,6 @@ function renderArtikelen() {
         </tr>`;
       }).join('');
 
-  // Toggle knop voor afgevoerde artikelen
   const afgevoerdToggle = afgevoerd.length > 0
     ? `<div style="text-align:center;margin-top:12px">
         <button onclick="toggleAfgevoerd()" style="background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer;text-decoration:underline">
@@ -181,10 +189,6 @@ function openAfvoerDialog(idx) {
   const art = _artikelen[idx];
   if (!art) return;
 
-  const modal = el('editModal');
-  el('editIdx').value = idx;
-
-  // Misbruik editModal niet — bouw een tijdelijk dialog
   const overlay = document.createElement('div');
   overlay.id = 'afvoerOverlay';
   overlay.className = 'modal-overlay active';
@@ -217,7 +221,6 @@ async function bevestigAfvoer(idx) {
   const art    = _artikelen[idx];
   const reden  = document.getElementById('afvoerReden')?.value || 'Afgevoerd';
   const overlay = document.getElementById('afvoerOverlay');
-
   if (!art) return;
 
   const ok = await voerArtikelAf(art.id, reden);
@@ -373,6 +376,7 @@ async function verwijder(idx) {
 
 // ============================================================
 // CERTIFICAAT RENDEREN
+// Toont meest recente keuring + alle oudere eronder
 // ============================================================
 function renderCertificaat() {
   if (_keuringen.length === 0) {
@@ -380,7 +384,10 @@ function renderCertificaat() {
     el('certView').style.display = 'none';
     return;
   }
+  el('certLeeg').style.display = 'none';
+  el('certView').style.display = 'block';
   toonCertificaat(_keuringen[0]);
+  renderHistorie();
 }
 
 function toonCertificaat(keuring) {
@@ -398,16 +405,13 @@ function toonCertificaat(keuring) {
   };
   _actieveFilter = 'alle';
 
-  el('certLeeg').style.display = 'none';
-  el('certView').style.display = 'block';
-
   const c     = _certData.certificaat;
   const items = _certData.items;
 
   el('certInfo').innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px">
       <div>
-        <div style="font-size:11px;opacity:.75;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Certificaatnummer</div>
+        <div style="font-size:11px;opacity:.75;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Meest recente keuring</div>
         <div class="cert-nr">${esc(c.nr)}</div>
         <div class="cert-meta">
           ${_klantNaam ? esc(_klantNaam) + ' · ' : ''}Keuringsdatum: ${c.datum ? formatDatum(c.datum) : '—'}<br>
@@ -516,7 +520,7 @@ function renderCertItems(items, zoek) {
 }
 
 // ============================================================
-// PDF GENERATIE — gedeelde hulpfunctie
+// PDF GENERATIE
 // ============================================================
 function _bouwPDF(items, ondertitel) {
   const { jsPDF } = window.jspdf;
@@ -676,23 +680,27 @@ function downloadCertPDFPerGebruiker() {
 }
 
 // ============================================================
-// HISTORIE RENDEREN
+// HISTORIE RENDEREN — oudere keuringen onder de meest recente
 // ============================================================
 function renderHistorie() {
-  if (_keuringen.length === 0) {
-    el('histLeeg').style.display = 'block';
-    el('histView').style.display = 'none';
+  // Verberg als er maar 1 of geen keuring is
+  const ouder = _keuringen.slice(1); // alles behalve de nieuwste
+  const histView = el('historieView');
+  if (!histView) return;
+
+  if (ouder.length === 0) {
+    histView.style.display = 'none';
     return;
   }
-  el('histLeeg').style.display = 'none';
-  el('histView').style.display = 'block';
+
+  histView.style.display = 'block';
   el('histZoek').value = '';
-  renderHistorieLijst(_keuringen);
+  renderHistorieLijst(ouder);
 }
 
 function filterHist() {
   const q = (el('histZoek').value || '').toLowerCase().trim();
-  renderHistorieLijst(_keuringen, q);
+  renderHistorieLijst(_keuringen.slice(1), q);
 }
 
 function renderHistorieLijst(keuringen, zoek) {
