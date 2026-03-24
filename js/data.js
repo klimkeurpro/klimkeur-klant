@@ -45,6 +45,7 @@ async function laadArtikelen() {
       status:       rij.status || 'nieuw',
       keuringId:    rij.keuring_id || null,
       toegevoegd:   rij.aangemaakt_op || '',
+      afgevoerd:    rij.afgevoerd || false,
     }));
 
     // Artikelen direct renderen — keuringen zijn mogelijk nog niet geladen.
@@ -80,6 +81,7 @@ async function slaArtikelOp(art) {
     opmerking:       art.opmerking || '',
     status:          art.status || 'nieuw',
     keuring_id:      art.keuringId || null,
+    afgevoerd:       art.afgevoerd || false,
   };
 
   try {
@@ -103,7 +105,34 @@ async function slaArtikelOp(art) {
 }
 
 // ============================================================
-// ARTIKEL VERWIJDEREN
+// ARTIKEL AFVOEREN
+// Zet afgevoerd=true — artikel blijft in database en certificaten
+// maar verdwijnt uit de actieve lijst van de klant
+// ============================================================
+async function voerArtikelAf(id, reden) {
+  try {
+    const { error } = await sb
+      .from('keuring_items')
+      .update({ afgevoerd: true, opmerking: reden || 'Afgevoerd' })
+      .eq('id', id);
+
+    if (error) {
+      console.error('Artikel afvoeren fout:', error);
+      toast('Fout bij afvoeren', 'error');
+      return false;
+    }
+
+    return true;
+
+  } catch (err) {
+    console.error('Onverwachte fout bij afvoeren artikel:', err);
+    toast('Fout bij afvoeren', 'error');
+    return false;
+  }
+}
+
+// ============================================================
+// ARTIKEL VERWIJDEREN (alleen niet-gekoppelde artikelen)
 // ============================================================
 async function verwijderArtikelDb(id) {
   try {
@@ -137,7 +166,6 @@ async function laadKeuringen() {
   if (!_klantId) return;
 
   try {
-    // Query 1: keuringen
     const { data: keuringData, error: keuringFout } = await sb
       .from('keuringen')
       .select('*')
@@ -154,11 +182,10 @@ async function laadKeuringen() {
       _keuringen = [];
       renderCertificaat();
       renderHistorie();
-      renderArtikelen(); // herrender zodat keuringdatum-logica correct is
+      renderArtikelen();
       return;
     }
 
-    // Query 2: alle items van deze keuringen in één query
     const keuringIds = keuringData.map(k => k.id);
 
     const { data: itemData, error: itemFout } = await sb
@@ -168,10 +195,8 @@ async function laadKeuringen() {
 
     if (itemFout) {
       console.error('Keuring items laden fout:', itemFout);
-      // Niet fataal — toon keuringen zonder items
     }
 
-    // Koppel items aan keuringen in JavaScript
     const itemsPerKeuring = {};
     (itemData || []).forEach(item => {
       if (!itemsPerKeuring[item.keuring_id]) {
@@ -213,8 +238,6 @@ function genId() {
 // De 12-maanden teller loopt vanaf de meest recente keuringdatum.
 // Als een artikel gekeurd is (keuringDatum aanwezig), overschrijft
 // die datum de inGebruik-datum als startpunt.
-// Voorbeeld: in gebruik 8 maanden geleden, maar gisteren gekeurd
-// → teller begint opnieuw → status 'ok', keuring over 12 maanden.
 // ============================================================
 function keuringStatus(inGebruik, keuringDatum) {
   const start = keuringDatum && keuringDatum > (inGebruik || '')
