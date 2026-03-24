@@ -4,10 +4,11 @@
 // ui.js — Alle weergave: tabs, artikelen, certificaat, historie
 // ============================================================
 
-let _certData      = null;
-let _actieveFilter = 'alle';
-let _artSort       = { col: 'omschrijving', asc: true };
-let _toonAfgevoerd = false;
+let _certData        = null;
+let _actieveFilter   = 'alle';
+let _artSort         = { col: 'omschrijving', asc: true };
+let _toonAfgevoerd   = false;
+let _gebruikerFilter = ''; // actief gebruikersfilter op artikelenlijst
 
 // ============================================================
 // HELPERS
@@ -44,14 +45,11 @@ function toggleToevoegForm() {
   const open = form.style.display !== 'none';
   form.style.display = open ? 'none' : 'block';
   chev.style.transform = open ? 'rotate(-90deg)' : 'rotate(0deg)';
-  if (!open) {
-    // Formulier net geopend — focus op omschrijving
-    setTimeout(() => el('fOmschr')?.focus(), 50);
-  }
+  if (!open) setTimeout(() => el('fOmschr')?.focus(), 50);
 }
 
 // ============================================================
-// ARTIKELEN RENDEREN — sorteerbare tabel
+// ARTIKELEN RENDEREN — sorteerbare tabel met gebruikersfilter
 // ============================================================
 function sortArtikelen(col) {
   if (_artSort.col === col) _artSort.asc = !_artSort.asc;
@@ -61,6 +59,11 @@ function sortArtikelen(col) {
 
 function toggleAfgevoerd() {
   _toonAfgevoerd = !_toonAfgevoerd;
+  renderArtikelen();
+}
+
+function setGebruikerFilter(gebruiker) {
+  _gebruikerFilter = gebruiker;
   renderArtikelen();
 }
 
@@ -93,8 +96,16 @@ function renderArtikelen() {
     return;
   }
 
-  const teTonenLijst = _toonAfgevoerd ? afgevoerd : actief;
+  // Unieke gebruikers voor filterknopjes
+  const gebruikers = [...new Set(actief.map(a => a.gebruiker || '').filter(Boolean))].sort();
 
+  // Pas gebruikersfilter toe
+  let teTonenLijst = _toonAfgevoerd ? afgevoerd : actief;
+  if (_gebruikerFilter && !_toonAfgevoerd) {
+    teTonenLijst = teTonenLijst.filter(a => (a.gebruiker || '') === _gebruikerFilter);
+  }
+
+  // Sorteer
   const gesorteerd = [...teTonenLijst].sort((a, b) => {
     if (_artSort.col === 'status') {
       const rang = { goedgekeurd: 0, afgekeurd: 1 };
@@ -122,7 +133,7 @@ function renderArtikelen() {
   }).join('') + '<th style="width:100px"></th>';
 
   const rijen = gesorteerd.length === 0
-    ? `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">Geen ${_toonAfgevoerd ? 'afgevoerde' : 'actieve'} artikelen</td></tr>`
+    ? `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">Geen artikelen voor deze gebruiker</td></tr>`
     : gesorteerd.map(art => {
         const idx = _artikelen.indexOf(art);
         const keuringDatum = art.keuringId
@@ -143,10 +154,10 @@ function renderArtikelen() {
 
         const acties = art.afgevoerd
           ? `<span style="font-size:11px;color:var(--text-muted);font-style:italic">Afgevoerd</span>`
-          : `<div style="display:flex;gap:4px;justify-content:flex-end;align-items:center;">
-              ${!art.keuringId ? `<button class="icon-btn" title="Bewerken" onclick="openEdit(${idx})">
+          : `<div style="display:flex;gap:4px;justify-content:flex-end;align-items:center;flex-wrap:wrap;">
+              <button class="icon-btn" title="Bewerken" onclick="openEdit(${idx})">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              </button>` : ''}
+              </button>
               <button onclick="openAfvoerDialog(${idx})" style="background:rgba(243,156,18,0.15);border:1px solid var(--warning);color:var(--warning);padding:3px 8px;border-radius:4px;font-size:11px;cursor:pointer;white-space:nowrap;">Afvoeren</button>
             </div>`;
 
@@ -164,6 +175,22 @@ function renderArtikelen() {
         </tr>`;
       }).join('');
 
+  // Gebruikersfilter knopjes — alleen tonen als er meerdere gebruikers zijn
+  const filterBtns = gebruikers.length > 1
+    ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
+        <button onclick="setGebruikerFilter('')" style="padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:${!_gebruikerFilter ? 'var(--green)' : 'transparent'};color:${!_gebruikerFilter ? '#fff' : 'var(--text-secondary)'};font-size:12px;cursor:pointer;">
+          Alle (${actief.length})
+        </button>
+        ${gebruikers.map(g => {
+          const aantal = actief.filter(a => (a.gebruiker || '') === g).length;
+          const actf = _gebruikerFilter === g;
+          return `<button onclick="setGebruikerFilter('${escAttr(g)}')" style="padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:${actf ? 'var(--green)' : 'transparent'};color:${actf ? '#fff' : 'var(--text-secondary)'};font-size:12px;cursor:pointer;">
+            ${esc(g)} (${aantal})
+          </button>`;
+        }).join('')}
+      </div>`
+    : '';
+
   const afgevoerdToggle = afgevoerd.length > 0
     ? `<div style="text-align:center;margin-top:12px">
         <button onclick="toggleAfgevoerd()" style="background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer;text-decoration:underline">
@@ -173,6 +200,7 @@ function renderArtikelen() {
     : '';
 
   lijst.innerHTML = `
+    ${filterBtns}
     <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
       <table style="min-width:600px;width:100%;border-collapse:collapse">
         <thead><tr style="border-bottom:2px solid var(--border)">${thHtml}</tr></thead>
@@ -301,6 +329,8 @@ async function voegToe() {
 
 // ============================================================
 // ARTIKEL BEWERKEN
+// Gebruiker-veld is altijd bewerkbaar — ook op gekeurde artikelen
+// Een gebruikersnaam veranderen heeft geen invloed op keuringsdata
 // ============================================================
 function openEdit(idx) {
   const a = _artikelen[idx];
@@ -319,11 +349,28 @@ function openEdit(idx) {
   el('eGebruiker').value = a.gebruiker || '';
   el('eOpmerking').value = a.opmerking || '';
 
+  // Als artikel gekoppeld is aan keuring: alleen gebruiker bewerkbaar
+  const gekoppeld = !!a.keuringId;
+  const velden = ['eOmschr', 'eMerk', 'eMateriaal', 'eSN', 'eJaar', 'eMaand', 'eInGebruik'];
+  velden.forEach(id => {
+    const inp = el(id);
+    if (inp) inp.disabled = gekoppeld;
+  });
+
+  // Melding tonen als velden vergrendeld zijn
+  const melding = el('editGekoppeldMelding');
+  if (melding) melding.style.display = gekoppeld ? 'block' : 'none';
+
   el('editModal').classList.add('active');
 }
 
 function sluitModal() {
   el('editModal').classList.remove('active');
+  // Velden weer vrijzetten voor volgende gebruik
+  ['eOmschr', 'eMerk', 'eMateriaal', 'eSN', 'eJaar', 'eMaand', 'eInGebruik'].forEach(id => {
+    const inp = el(id);
+    if (inp) inp.disabled = false;
+  });
 }
 
 async function slaEditOp() {
@@ -335,16 +382,20 @@ async function slaEditOp() {
 
   const jaar  = el('eJaar').value.trim();
   const maand = el('eMaand').value;
+  const a     = _artikelen[idx];
+  const gekoppeld = !!a.keuringId;
 
   const bijgewerkt = {
-    ..._artikelen[idx],
-    omschrijving:   omschr,
-    merk:           el('eMerk').value.trim(),
-    serienummer:    sn,
-    fabrJaar:       jaar ? parseInt(jaar) : '',
-    fabrMaand:      (jaar && maand) ? maand : '',
-    productieDatum: jaar ? (maand ? jaar + '-' + maand : String(jaar)) : '',
-    inGebruik:      el('eInGebruik').value,
+    ...a,
+    // Als gekoppeld: alleen gebruiker opslaan, rest ongewijzigd laten
+    omschrijving:   gekoppeld ? a.omschrijving   : omschr,
+    merk:           gekoppeld ? a.merk           : el('eMerk').value.trim(),
+    serienummer:    gekoppeld ? a.serienummer    : sn,
+    fabrJaar:       gekoppeld ? a.fabrJaar       : (jaar ? parseInt(jaar) : ''),
+    fabrMaand:      gekoppeld ? a.fabrMaand      : ((jaar && maand) ? maand : ''),
+    productieDatum: gekoppeld ? a.productieDatum : (jaar ? (maand ? jaar + '-' + maand : String(jaar)) : ''),
+    inGebruik:      gekoppeld ? a.inGebruik      : el('eInGebruik').value,
+    // Gebruiker altijd bewerkbaar
     gebruiker:      el('eGebruiker').value.trim(),
     opmerking:      el('eOpmerking').value.trim(),
   };
@@ -358,25 +409,8 @@ async function slaEditOp() {
   toast('Artikel bijgewerkt');
 }
 
-async function verwijder(idx) {
-  const a = _artikelen[idx];
-  if (a.keuringId) {
-    toast('Dit artikel is gekoppeld aan een keuring — gebruik "Afvoeren" om het te verbergen', 'error');
-    return;
-  }
-  if (!confirm(`"${a.omschrijving}" (${a.serienummer}) definitief verwijderen?`)) return;
-
-  const ok = await verwijderArtikelDb(a.id);
-  if (!ok) return;
-
-  _artikelen.splice(idx, 1);
-  renderArtikelen();
-  toast('Artikel verwijderd');
-}
-
 // ============================================================
 // CERTIFICAAT RENDEREN
-// Toont meest recente keuring + alle oudere eronder
 // ============================================================
 function renderCertificaat() {
   if (_keuringen.length === 0) {
@@ -650,7 +684,7 @@ function downloadCertPDF() {
   if (!_certData) { toast('Geen certificaat beschikbaar', 'error'); return; }
   if (typeof window.jspdf === 'undefined') { toast('PDF-bibliotheek nog niet geladen', 'error'); return; }
   const items = _actieveFilter === 'alle' ? _certData.items : _certData.items.filter(i => (i.gebruiker || '') === _actieveFilter);
-  const doc = _bouwPDF(items, null);
+  const doc = _bouwPDF(items, _actieveFilter !== 'alle' ? _actieveFilter : null);
   const c   = _certData.certificaat;
   doc.save(`Certificaat_${(c.nr || 'keuring').replace(/[^a-zA-Z0-9]/g, '_')}_${c.datum || ''}.pdf`);
   toast('PDF gedownload');
@@ -680,11 +714,10 @@ function downloadCertPDFPerGebruiker() {
 }
 
 // ============================================================
-// HISTORIE RENDEREN — oudere keuringen onder de meest recente
+// HISTORIE RENDEREN
 // ============================================================
 function renderHistorie() {
-  // Verberg als er maar 1 of geen keuring is
-  const ouder = _keuringen.slice(1); // alles behalve de nieuwste
+  const ouder = _keuringen.slice(1);
   const histView = el('historieView');
   if (!histView) return;
 
