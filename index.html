@@ -73,10 +73,6 @@
 
 <!-- ============================================================
      WACHTWOORD INSTELLEN OVERLAY
-     Wordt gebruikt voor twee flows:
-     1. Invite-flow: nieuwe klant stelt eerste wachtwoord in
-     2. Reset-flow: bestaande klant kiest nieuw wachtwoord
-     De teksten en knop worden dynamisch aangepast via JS.
      ============================================================ -->
 <div class="auth-overlay" id="wwOverlay" style="display:none">
   <div class="auth-box">
@@ -92,13 +88,10 @@
     </div>
     <div class="auth-title" id="wwTitel">Welkom!</div>
     <div class="auth-sub" id="wwSub">Kies een wachtwoord om je account te activeren</div>
-
-    <!-- E-mailadres weergave: toont voor welk account het wachtwoord wordt ingesteld -->
     <div id="wwEmailInfo" style="display:none;margin-bottom:16px;background:#EBF5E1;border:1px solid #B8DFA0;border-radius:8px;padding:10px 14px;font-size:13px;color:#2D5A16;text-align:center">
       <span style="font-weight:400">Account:</span>
       <strong id="wwEmailAdres"></strong>
     </div>
-
     <div class="auth-error" id="wwError"></div>
     <div class="form-group">
       <label class="form-label">Nieuw wachtwoord</label>
@@ -139,7 +132,7 @@
       <div class="header-sub" id="headerSub">Mijn Materiaal</div>
     </div>
   </div>
-<div class="header-welkom" id="headerWelkom"></div>
+  <div class="header-welkom" id="headerWelkom"></div>
   <button class="logout-btn" id="logoutBtn" onclick="uitloggen()">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
@@ -151,29 +144,22 @@
 </header>
 
 <!-- ============================================================
-     TABS
+     TABS — 2 tabs
      ============================================================ -->
 <div class="tabs">
   <button class="tab-btn active" onclick="switchTab('materiaal',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M9 11l3 3L22 4"/>
-      <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
     </svg>
-    Materiaal toevoegen
+    Mijn Materiaal
+    <span class="count-badge" id="artTeller">0</span>
   </button>
-  <button class="tab-btn" onclick="switchTab('certificaat',this)">
+  <button class="tab-btn" onclick="switchTab('certificaten',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
       <polyline points="14 2 14 8 20 8"/>
     </svg>
-    Gekeurde artikelen
-  </button>
-  <button class="tab-btn" onclick="switchTab('historie',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <circle cx="12" cy="12" r="10"/>
-      <polyline points="12 6 12 12 16 14"/>
-    </svg>
-    Historie
+    Certificaten
   </button>
 </div>
 
@@ -199,9 +185,9 @@
       </div>
     </div>
 
-    <!-- Artikel toevoegen -->
+    <!-- Artikel toevoegen — ingeklapt -->
     <div class="card">
-      <div class="card-header">
+      <div class="card-header" onclick="toggleToevoegForm()" style="cursor:pointer;user-select:none;">
         <div class="card-title">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="12" y1="5" x2="12" y2="19"/>
@@ -209,110 +195,117 @@
           </svg>
           Artikel toevoegen
         </div>
-        <div class="status-badge load" id="statusBadge">Laden...</div>
-      </div>
-      <div class="card-body">
-
-        <div class="form-group">
-          <label class="form-label">Omschrijving *</label>
-          <div class="ac-wrap">
-            <input class="form-input" id="fOmschr"
-              placeholder="Typ om te zoeken of voer zelf in..."
-              type="text" autocomplete="off" autocorrect="off" spellcheck="false"
-              oninput="acZoeken(this.value,'main')"
-              onkeydown="acKey(event,'main')"
-              onblur="setTimeout(()=>acSluit('main'),150)">
-            <div class="ac-dd" id="acDd"></div>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">
-              Merk <span class="opt">(automatisch bij herkenning)</span>
-            </label>
-            <input class="form-input" id="fMerk"
-              placeholder="Bijv. Petzl, Edelrid..." type="text" autocomplete="off"
-              oninput="acZoekenOpVeld('main')"
-              onblur="setTimeout(()=>acSluit('main'),150)">
-            <div class="merk-auto-label" id="merkLabel" style="display:none">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                <polyline points="22 4 12 14.01 9 11.01"/>
-              </svg>
-              Automatisch ingevuld vanuit productdatabase
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">
-              Materiaal <span class="opt">(automatisch bij herkenning)</span>
-            </label>
-            <input class="form-input" id="fMateriaal"
-              placeholder="Bijv. Helm, Harnas, Klimgordel..." type="text" autocomplete="off"
-              oninput="acZoekenOpVeld('main')"
-              onblur="setTimeout(()=>acSluit('main'),150)">
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Serienummer <span class="opt">optioneel</span></label>
-            <div style=display:flex;gap:4px;"><input class="form-input" id="fSN" placeholder="bijv. SN12345678" type="text" autocomplete="off" style="font-family:monospace;flex:1;min-width:0;"><button type="button" class="btn" onclick="openScanner('fSN')" title="Scan" style="padding:6px 8px;flex-shrink:0;">📷</button></div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">
-              Productiedatum <span class="opt">optioneel</span>
-            </label>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-              <input class="form-input" id="fJaar"
-                type="number" placeholder="Jaar" min="1980" max="2099"
-                style="font-family:monospace">
-              <select class="form-input" id="fMaand">
-                <option value="">Maand</option>
-                <option value="01">Jan</option><option value="02">Feb</option>
-                <option value="03">Mrt</option><option value="04">Apr</option>
-                <option value="05">Mei</option><option value="06">Jun</option>
-                <option value="07">Jul</option><option value="08">Aug</option>
-                <option value="09">Sep</option><option value="10">Okt</option>
-                <option value="11">Nov</option><option value="12">Dec</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">
-              In gebruik sinds <span class="opt">optioneel</span>
-            </label>
-            <input class="form-input" id="fInGebruik" type="date">
-          </div>
-          <div class="form-group">
-            <label class="form-label">
-              Gebruiker <span class="opt">optioneel</span>
-            </label>
-            <input class="form-input" id="fGebruiker"
-              placeholder="Naam of functie..." type="text"autocomplete="off">
-          </div>
-        </div>
-
-        <div class="form-group" style="margin-bottom:0">
-          <label class="form-label">
-            Opmerking <span class="opt">optioneel</span>
-          </label>
-          <input class="form-input" id="fOpmerking"
-            placeholder="bijv. kleur rood, recall gecontroleerd..." type="text">
-        </div>
-
-        <button class="btn btn-primary" style="margin-top:16px"
-          onclick="voegToe()" id="toevoegBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <line x1="12" y1="5" x2="12" y2="19"/>
-            <line x1="5" y1="12" x2="19" y2="12"/>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div class="status-badge load" id="statusBadge">Laden...</div>
+          <svg id="toevoegChev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" style="transition:transform 0.2s;transform:rotate(-90deg)">
+            <polyline points="6 9 12 15 18 9"/>
           </svg>
-          Toevoegen
-        </button>
+        </div>
+      </div>
+      <div id="toevoegForm" style="display:none;">
+        <div class="card-body">
 
+          <div class="form-group">
+            <label class="form-label">Omschrijving *</label>
+            <div class="ac-wrap">
+              <input class="form-input" id="fOmschr"
+                placeholder="Typ om te zoeken of voer zelf in..."
+                type="text" autocomplete="off" autocorrect="off" spellcheck="false"
+                oninput="acZoeken(this.value,'main')"
+                onkeydown="acKey(event,'main')"
+                onblur="setTimeout(()=>acSluit('main'),150)">
+              <div class="ac-dd" id="acDd"></div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">
+                Merk <span class="opt">(automatisch bij herkenning)</span>
+              </label>
+              <input class="form-input" id="fMerk"
+                placeholder="Bijv. Petzl, Edelrid..." type="text" autocomplete="off"
+                oninput="acZoekenOpVeld('main')"
+                onblur="setTimeout(()=>acSluit('main'),150)">
+              <div class="merk-auto-label" id="merkLabel" style="display:none">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                  <polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+                Automatisch ingevuld vanuit productdatabase
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">
+                Materiaal <span class="opt">(automatisch bij herkenning)</span>
+              </label>
+              <input class="form-input" id="fMateriaal"
+                placeholder="Bijv. Helm, Harnas, Klimgordel..." type="text" autocomplete="off"
+                oninput="acZoekenOpVeld('main')"
+                onblur="setTimeout(()=>acSluit('main'),150)">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Serienummer <span class="opt">optioneel</span></label>
+              <div style="display:flex;gap:4px;"><input class="form-input" id="fSN" placeholder="bijv. SN12345678" type="text" autocomplete="off" style="font-family:monospace;flex:1;min-width:0;"><button type="button" class="btn" onclick="openScanner('fSN')" title="Scan" style="padding:6px 8px;flex-shrink:0;">📷</button></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">
+                Productiedatum <span class="opt">optioneel</span>
+              </label>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                <input class="form-input" id="fJaar"
+                  type="number" placeholder="Jaar" min="1980" max="2099"
+                  style="font-family:monospace">
+                <select class="form-input" id="fMaand">
+                  <option value="">Maand</option>
+                  <option value="01">Jan</option><option value="02">Feb</option>
+                  <option value="03">Mrt</option><option value="04">Apr</option>
+                  <option value="05">Mei</option><option value="06">Jun</option>
+                  <option value="07">Jul</option><option value="08">Aug</option>
+                  <option value="09">Sep</option><option value="10">Okt</option>
+                  <option value="11">Nov</option><option value="12">Dec</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">
+                In gebruik sinds <span class="opt">optioneel</span>
+              </label>
+              <input class="form-input" id="fInGebruik" type="date">
+            </div>
+            <div class="form-group">
+              <label class="form-label">
+                Gebruiker <span class="opt">optioneel</span>
+              </label>
+              <input class="form-input" id="fGebruiker"
+                placeholder="Naam of functie..." type="text" autocomplete="off">
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">
+              Opmerking <span class="opt">optioneel</span>
+            </label>
+            <input class="form-input" id="fOpmerking"
+              placeholder="bijv. kleur rood, recall gecontroleerd..." type="text">
+          </div>
+
+          <button class="btn btn-primary" style="margin-top:16px"
+            onclick="voegToe()" id="toevoegBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Toevoegen
+          </button>
+
+        </div>
       </div>
     </div>
 
@@ -329,7 +322,6 @@
             <line x1="3" y1="18" x2="3.01" y2="18"/>
           </svg>
           Mijn artikelen
-          <span class="count-badge" id="artTeller">0</span>
         </div>
       </div>
       <div class="card-body" id="artLijst" style="padding:12px 16px">
@@ -338,7 +330,7 @@
             <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
           </svg>
           <h3>Nog geen artikelen</h3>
-          <p>Voeg je klimmateriaal toe via het formulier hierboven.</p>
+          <p>Klik op "Artikel toevoegen" hierboven om te beginnen.</p>
         </div>
       </div>
     </div>
@@ -355,11 +347,12 @@
 </div>
 
 <!-- ============================================================
-     PAGINA: CERTIFICAAT
+     PAGINA: CERTIFICATEN + HISTORIE (gecombineerd)
      ============================================================ -->
-<div class="page" id="page-certificaat">
+<div class="page" id="page-certificaten">
   <div class="main fade-in">
 
+    <!-- Leeg scherm als geen keuringen -->
     <div id="certLeeg">
       <div class="card">
         <div class="card-body">
@@ -368,60 +361,41 @@
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
               <polyline points="14 2 14 8 20 8"/>
             </svg>
-            <h3>Geen certificaat beschikbaar</h3>
-            <p>Na je keuring verschijnt je certificaat hier automatisch.</p>
+            <h3>Geen certificaten beschikbaar</h3>
+            <p>Na je eerste keuring verschijnen je certificaten hier automatisch.</p>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- Inhoud als er keuringen zijn -->
     <div id="certView" style="display:none">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px">
-        <h2 style="font-size:16px;font-weight:700">Gekeurde artikelen</h2>
-      </div>
+
+      <!-- Meest recente keuring -->
       <div class="cert-header" id="certInfo"></div>
       <div class="stats-row" id="certStats"></div>
       <div id="certFilter" style="display:none">
         <div class="filter-row" id="certFilterBtns"></div>
       </div>
       <div id="certItems"></div>
-    </div>
 
-  </div>
-</div>
-
-<!-- ============================================================
-     PAGINA: HISTORIE
-     ============================================================ -->
-<div class="page" id="page-historie">
-  <div class="main fade-in">
-
-    <div id="histLeeg">
-      <div class="card">
-        <div class="card-body">
-          <div class="empty-state">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <circle cx="12" cy="12" r="10"/>
-              <polyline points="12 6 12 12 16 14"/>
+      <!-- Historie — alle oudere keuringen -->
+      <div id="historieView" style="margin-top:24px;display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+          <h3 style="font-size:15px;font-weight:600;margin:0">Eerdere keuringen</h3>
+          <div class="zoek-wrap" style="flex:1;max-width:320px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
-            <h3>Geen historie beschikbaar</h3>
-            <p>Na je eerste keuring verschijnt de historie hier automatisch.</p>
+            <input class="zoek-input" id="histZoek"
+              placeholder="Zoek in historie..."
+              oninput="filterHist()">
           </div>
         </div>
+        <div id="histLijst"></div>
       </div>
-    </div>
 
-    <div id="histView" style="display:none">
-      <div class="zoek-wrap">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8"/>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        <input class="zoek-input" id="histZoek"
-          placeholder="Zoek op omschrijving, serienummer, merk..."
-          oninput="filterHist()">
-      </div>
-      <div id="histLijst"></div>
     </div>
 
   </div>
@@ -470,7 +444,7 @@
 
     <div class="form-row">
       <div class="form-group">
-        <label class="form-label">Serienummer </label>
+        <label class="form-label">Serienummer</label>
         <div style="display:flex;gap:4px;"><input class="form-input" id="eSN" type="text" style="font-family:monospace;flex:1;" autocomplete="off"><button type="button" class="btn btn-primary" onclick="openScanner('eSN')" title="Scan barcode/DataMatrix" style="padding:6px 10px;">📷</button></div>
       </div>
       <div class="form-group">
@@ -516,16 +490,7 @@
 </div>
 
 <!-- ============================================================
-     SCRIPTS — volgorde is belangrijk:
-     1. Supabase library (extern)
-     2. config.js — maakt de sb verbinding aan
-     3. auth.js — detecteert invite, definieert login functies
-     4. branding.js — definieert laadBranding
-     5. data.js — definieert laadArtikelen, laadKeuringen
-     6. autocomplete.js — definieert acZoeken, acKey, acSluit
-     7. jsPDF — PDF generatie (vóór ui.js zodat downloadCertPDF beschikbaar is)
-     8. ui.js — definieert renderArtikelen, toast, switchTab etc.
-     9. app.js — start de app via onAuthStateChange (als laatste)
+     SCRIPTS
      ============================================================ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js"></script>
