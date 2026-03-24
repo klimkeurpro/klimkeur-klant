@@ -53,7 +53,10 @@ function sortArtikelen(col) {
 function renderArtikelen() {
   const totaal = _artikelen.length;
   const goed   = _artikelen.filter(a => a.status === 'goedgekeurd').length;
-  const nodig  = _artikelen.filter(a => keuringStatus(a.inGebruik) === 'overdue').length;
+  const nodig  = _artikelen.filter(a => {
+    const kd = a.keuringId ? (_keuringen.find(k => k.id === a.keuringId)?.datum || null) : null;
+    return keuringStatus(a.inGebruik, kd) === 'overdue';
+  }).length;
 
   el('artTeller').textContent   = totaal;
   el('statTotaal').textContent  = totaal;
@@ -77,7 +80,6 @@ function renderArtikelen() {
   const gesorteerd = [..._artikelen].sort((a, b) => {
     let va = '', vb = '';
     if (_artSort.col === 'status') {
-      // Goedgekeurd → afgekeurd → rest
       const rang = { goedgekeurd: 0, afgekeurd: 1 };
       va = rang[a.status] !== undefined ? rang[a.status] : 2;
       vb = rang[b.status] !== undefined ? rang[b.status] : 2;
@@ -105,8 +107,14 @@ function renderArtikelen() {
 
   const rijen = gesorteerd.map(art => {
     const idx = _artikelen.indexOf(art);
-    const ks  = keuringStatus(art.inGebruik);
-    const kt  = keuringTekst(ks, art.inGebruik);
+
+    // ── BUGFIX: gebruik keuringdatum als startpunt als artikel gekeurd is ──
+    const keuringDatum = art.keuringId
+      ? (_keuringen.find(k => k.id === art.keuringId)?.datum || null)
+      : null;
+    const ks = keuringStatus(art.inGebruik, keuringDatum);
+    const kt = keuringTekst(ks, art.inGebruik, keuringDatum);
+    // ──────────────────────────────────────────────────────────────────────
 
     const statusBadge = art.status === 'goedgekeurd'
       ? '<span class="badge badge-green" style="font-size:11px;padding:2px 8px;white-space:nowrap">✓ Goed</span>'
@@ -196,7 +204,6 @@ async function voegToe() {
 
   _artikelen.unshift(art);
 
-  // Formulier resetten (bewaar gebruiker-veld)
   const gebruiker = el('fGebruiker').value;
   el('fOmschr').value = '';
   el('fMerk').value = '';
@@ -296,7 +303,6 @@ async function verwijder(idx) {
 
 // ============================================================
 // CERTIFICAAT RENDEREN
-// Toont de meest recente keuring
 // ============================================================
 function renderCertificaat() {
   if (_keuringen.length === 0) {
@@ -340,24 +346,13 @@ function toonCertificaat(keuring) {
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
         <span class="badge" style="background:rgba(255,255,255,.2);color:#fff">${c.afgerond ? '✓ Afgerond' : 'Concept'}</span>
-        <button onclick="downloadCertPDF()" style="
-          background:rgba(255,255,255,0.15);
-          border:1px solid rgba(255,255,255,0.3);
-          color:#fff;
-          padding:6px 12px;
-          border-radius:6px;
-          cursor:pointer;
-          font-size:12px;
-          display:flex;
-          align-items:center;
-          gap:6px;
-        ">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
+        <button onclick="downloadCertPDF()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:6px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           PDF
+        </button>
+        <button onclick="downloadCertPDFPerGebruiker()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:6px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          PDF per gebruiker
         </button>
       </div>
     </div>`;
@@ -370,7 +365,6 @@ function toonCertificaat(keuring) {
     <div class="stat-box"><div class="stat-nr" style="color:var(--green)">${goed}</div><div class="stat-lbl">Goedgekeurd</div></div>
     <div class="stat-box"><div class="stat-nr" style="color:var(--danger)">${afk}</div><div class="stat-lbl">Afgekeurd</div></div>`;
 
-  // Filter op gebruiker (alleen tonen als er meerdere gebruikers zijn)
   const gebruikers = [...new Set(items.map(i => i.gebruiker || ''))];
   const filterEl   = el('certFilter');
   if (gebruikers.length > 1) {
@@ -410,7 +404,6 @@ function renderCertItems(items, zoek) {
     return;
   }
 
-  // Groepeer per gebruiker
   const groepen = {};
   items.forEach(i => {
     const g = i.gebruiker || 'Algemeen';
@@ -453,25 +446,12 @@ function renderCertItems(items, zoek) {
 }
 
 // ============================================================
-// PDF DOWNLOAD — certificaat als PDF
-// Vereist: jsPDF geladen via script-tag in index.html
+// PDF GENERATIE — gedeelde hulpfunctie
+// Bouwt een jsPDF document voor een lijst items
 // ============================================================
-function downloadCertPDF() {
-  if (!_certData) { toast('Geen certificaat beschikbaar', 'error'); return; }
-  if (typeof window.jspdf === 'undefined') {
-    toast('PDF-bibliotheek nog niet geladen, probeer opnieuw', 'error');
-    return;
-  }
-
+function _bouwPDF(items, ondertitel) {
   const { jsPDF } = window.jspdf;
-  const c     = _certData.certificaat;
-  const items = _certData.items;
-
-  // Filter op actieve gebruiker als er een filter actief is
-  const zichtbareItems = _actieveFilter === 'alle'
-    ? items
-    : items.filter(i => (i.gebruiker || '') === _actieveFilter);
-
+  const c        = _certData.certificaat;
   const doc      = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageW    = doc.internal.pageSize.getWidth();
   const pageH    = doc.internal.pageSize.getHeight();
@@ -485,12 +465,10 @@ function downloadCertPDF() {
   // ── HEADER ──
   doc.setFillColor(...groen);
   doc.rect(0, 0, pageW, 22, 'F');
-
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(255, 255, 255);
   doc.text('KEURINGS-CERTIFICAAT', margin, 14);
-
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.text(c.bedrijf || '', pageW - margin, 14, { align: 'right' });
@@ -498,17 +476,17 @@ function downloadCertPDF() {
   y = 30;
 
   // ── CERTIFICAATINFO ──
+  const infoRijen = [
+    ['Certificaatnummer:', c.nr || '—'],
+    ['Keuringsdatum:',     c.datum ? formatDatum(c.datum) : '—'],
+    ['Keurmeester:',       c.keurmeester || '—'],
+    ['Eigenaar:',          _klantNaam || '—'],
+  ];
+  if (ondertitel) infoRijen.push(['Gebruiker:', ondertitel]);
+
   doc.setFontSize(9);
   doc.setTextColor(...donker);
-
-  const infoLinks = [
-    ['Certificaatnummer:', c.nr || '—'],
-    ['Keuringsdatum:', c.datum ? formatDatum(c.datum) : '—'],
-    ['Keurmeester:', c.keurmeester || '—'],
-    ['Eigenaar:', _klantNaam || '—'],
-  ];
-
-  infoLinks.forEach(([label, waarde]) => {
+  infoRijen.forEach(([label, waarde]) => {
     doc.setFont('helvetica', 'bold');
     doc.text(label, margin, y);
     doc.setFont('helvetica', 'normal');
@@ -516,7 +494,6 @@ function downloadCertPDF() {
     y += 5.5;
   });
 
-  // Status badge tekst
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...groen);
   doc.text(c.afgerond ? '✓ Afgerond' : 'Concept', pageW - margin, 32, { align: 'right' });
@@ -528,17 +505,16 @@ function downloadCertPDF() {
   y += 6;
 
   // ── STATISTIEKEN ──
-  const goed = zichtbareItems.filter(i => i.status === 'goedgekeurd').length;
-  const afk  = zichtbareItems.filter(i => i.status === 'afgekeurd').length;
-
+  const goed = items.filter(i => i.status === 'goedgekeurd').length;
+  const afk  = items.filter(i => i.status === 'afgekeurd').length;
   doc.setFontSize(8);
   doc.setTextColor(...grijs);
   doc.setFont('helvetica', 'normal');
-  doc.text(`${zichtbareItems.length} items  ·  ${goed} goedgekeurd  ·  ${afk} afgekeurd`, margin, y);
+  doc.text(`${items.length} items  ·  ${goed} goedgekeurd  ·  ${afk} afgekeurd`, margin, y);
   y += 8;
 
   // ── TABEL HEADER ──
-  const colW = { omschr: 62, merk: 28, sn: 35, status: 28, gebruiker: 28 };
+  const colW = { omschr: 62, merk: 28, sn: 35, gebruiker: 28, status: 28 };
   const rowH = 6.5;
 
   doc.setFillColor(...groen);
@@ -548,30 +524,26 @@ function downloadCertPDF() {
   doc.setTextColor(255, 255, 255);
 
   let x = margin + 2;
-  doc.text('Omschrijving',  x, y + 4.5); x += colW.omschr;
-  doc.text('Merk',          x, y + 4.5); x += colW.merk;
-  doc.text('Serienummer',   x, y + 4.5); x += colW.sn;
-  doc.text('Gebruiker',     x, y + 4.5); x += colW.gebruiker;
-  doc.text('Status',        x, y + 4.5);
+  doc.text('Omschrijving', x, y + 4.5); x += colW.omschr;
+  doc.text('Merk',         x, y + 4.5); x += colW.merk;
+  doc.text('Serienummer',  x, y + 4.5); x += colW.sn;
+  doc.text('Gebruiker',    x, y + 4.5); x += colW.gebruiker;
+  doc.text('Status',       x, y + 4.5);
   y += rowH;
 
   // ── TABEL RIJEN ──
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
 
-  zichtbareItems.forEach((item, i) => {
-    // Nieuwe pagina als nodig
+  items.forEach((item, i) => {
     if (y + rowH > pageH - 16) {
       doc.addPage();
       y = margin;
     }
-
-    // Achtergrond afwisselend
     if (i % 2 === 0) {
       doc.setFillColor(245, 248, 242);
       doc.rect(margin, y, pageW - margin * 2, rowH, 'F');
     }
-
     const statusTekst = item.status === 'goedgekeurd' ? 'Goedgekeurd'
       : item.status === 'afgekeurd'
         ? 'Afgekeurd' + (item.afkeurcode ? ' (' + item.afkeurcode + ')' : '')
@@ -579,31 +551,24 @@ function downloadCertPDF() {
 
     doc.setTextColor(...donker);
     x = margin + 2;
+    doc.text((item.omschrijving || '').substring(0, 32),    x, y + 4.5); x += colW.omschr;
+    doc.text((item.merk || '').substring(0, 16),             x, y + 4.5); x += colW.merk;
+    doc.text((item.serienummer || '').substring(0, 18),      x, y + 4.5); x += colW.sn;
+    doc.text((item.gebruiker || '').substring(0, 16),        x, y + 4.5); x += colW.gebruiker;
 
-    // Omschrijving — afkappen als te lang
-    const omschr = (item.omschrijving || '').substring(0, 32);
-    doc.text(omschr,                              x, y + 4.5); x += colW.omschr;
-    doc.text((item.merk || '').substring(0,16),   x, y + 4.5); x += colW.merk;
-    doc.text((item.serienummer || '').substring(0,18), x, y + 4.5); x += colW.sn;
-    doc.text((item.gebruiker || '').substring(0,16),   x, y + 4.5); x += colW.gebruiker;
-
-    // Statuskleur
-    if (item.status === 'goedgekeurd') doc.setTextColor(...groen);
-    else if (item.status === 'afgekeurd') doc.setTextColor(192, 57, 43);
-    else doc.setTextColor(...grijs);
-
+    if (item.status === 'goedgekeurd')      doc.setTextColor(...groen);
+    else if (item.status === 'afgekeurd')   doc.setTextColor(192, 57, 43);
+    else                                    doc.setTextColor(...grijs);
     doc.text(statusTekst.substring(0, 20), x, y + 4.5);
     doc.setTextColor(...donker);
 
-    // Scheidingslijn
     doc.setDrawColor(...lichtgrijs);
     doc.setLineWidth(0.2);
     doc.line(margin, y + rowH, pageW - margin, y + rowH);
-
     y += rowH;
   });
 
-  // ── FOOTER op elke pagina ──
+  // ── FOOTER ──
   const totaalPaginas = doc.internal.getNumberOfPages();
   for (let p = 1; p <= totaalPaginas; p++) {
     doc.setPage(p);
@@ -619,9 +584,61 @@ function downloadCertPDF() {
     doc.line(margin, pageH - 9, pageW - margin, pageH - 9);
   }
 
+  return doc;
+}
+
+// ============================================================
+// PDF DOWNLOAD — volledig certificaat
+// ============================================================
+function downloadCertPDF() {
+  if (!_certData) { toast('Geen certificaat beschikbaar', 'error'); return; }
+  if (typeof window.jspdf === 'undefined') { toast('PDF-bibliotheek nog niet geladen', 'error'); return; }
+
+  const items = _actieveFilter === 'alle'
+    ? _certData.items
+    : _certData.items.filter(i => (i.gebruiker || '') === _actieveFilter);
+
+  const c   = _certData.certificaat;
+  const doc = _bouwPDF(items, null);
   const bestandsnaam = `Certificaat_${(c.nr || 'keuring').replace(/[^a-zA-Z0-9]/g, '_')}_${c.datum || ''}.pdf`;
   doc.save(bestandsnaam);
   toast('PDF gedownload');
+}
+
+// ============================================================
+// PDF PER GEBRUIKER — apart bestand per gebruiker
+// ============================================================
+function downloadCertPDFPerGebruiker() {
+  if (!_certData) { toast('Geen certificaat beschikbaar', 'error'); return; }
+  if (typeof window.jspdf === 'undefined') { toast('PDF-bibliotheek nog niet geladen', 'error'); return; }
+
+  const c      = _certData.certificaat;
+  const items  = _certData.items;
+
+  // Groepeer op gebruiker
+  const groepen = {};
+  items.forEach(i => {
+    const g = i.gebruiker || 'Algemeen';
+    if (!groepen[g]) groepen[g] = [];
+    groepen[g].push(i);
+  });
+
+  const gebruikers = Object.keys(groepen);
+
+  // Als maar één gebruiker: gewoon normaal PDF
+  if (gebruikers.length <= 1) {
+    downloadCertPDF();
+    return;
+  }
+
+  gebruikers.forEach(gebruiker => {
+    const doc = _bouwPDF(groepen[gebruiker], gebruiker);
+    const safeGebruiker = gebruiker.replace(/[^a-zA-Z0-9]/g, '_');
+    const bestandsnaam  = `Certificaat_${(c.nr || 'keuring').replace(/[^a-zA-Z0-9]/g, '_')}_${safeGebruiker}.pdf`;
+    doc.save(bestandsnaam);
+  });
+
+  toast(`${gebruikers.length} PDF bestanden gedownload`);
 }
 
 // ============================================================
@@ -698,7 +715,6 @@ function renderHistorieLijst(keuringen, zoek) {
 
   el('histLijst').innerHTML = html.trim() || '<div class="geen-res">Geen items gevonden</div>';
 
-  // Bij zoeken: klap alle resultaten automatisch open
   if (zoek) {
     keuringen.forEach((_, idx) => {
       const body = el(`hbody-${idx}`);
