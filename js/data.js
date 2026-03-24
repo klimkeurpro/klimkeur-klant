@@ -47,6 +47,9 @@ async function laadArtikelen() {
       toegevoegd:   rij.aangemaakt_op || '',
     }));
 
+    // Artikelen direct renderen — keuringen zijn mogelijk nog niet geladen.
+    // renderArtikelen() wordt nogmaals aangeroepen vanuit laadKeuringen()
+    // zodra die klaar is, zodat de keuringdatum dan wel beschikbaar is.
     renderArtikelen();
 
   } catch (err) {
@@ -151,6 +154,7 @@ async function laadKeuringen() {
       _keuringen = [];
       renderCertificaat();
       renderHistorie();
+      renderArtikelen(); // herrender zodat keuringdatum-logica correct is
       return;
     }
 
@@ -188,6 +192,7 @@ async function laadKeuringen() {
 
     renderCertificaat();
     renderHistorie();
+    renderArtikelen(); // herrender nu _keuringen gevuld is — keuringdatum nu beschikbaar
 
   } catch (err) {
     console.error('Onverwachte fout bij laden keuringen:', err);
@@ -212,7 +217,6 @@ function genId() {
 // → teller begint opnieuw → status 'ok', keuring over 12 maanden.
 // ============================================================
 function keuringStatus(inGebruik, keuringDatum) {
-  // Startpunt = meest recente van inGebruik en keuringDatum
   const start = keuringDatum && keuringDatum > (inGebruik || '')
     ? keuringDatum
     : inGebruik;
