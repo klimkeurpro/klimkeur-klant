@@ -4,12 +4,10 @@
 // ui.js — Alle weergave: tabs, artikelen, certificaat, historie
 // ============================================================
 
-// Huidig actief certificaat (voor filter + zoek)
 let _certData      = null;
 let _actieveFilter = 'alle';
-
-// Sortering artikelentabel
-let _artSort = { col: 'omschrijving', asc: true };
+let _artSort       = { col: 'omschrijving', asc: true };
+let _toonAfgevoerd = false; // standaard verborgen
 
 // ============================================================
 // HELPERS
@@ -41,19 +39,24 @@ function switchTab(naam, knop) {
 // ARTIKELEN RENDEREN — sorteerbare tabel
 // ============================================================
 function sortArtikelen(col) {
-  if (_artSort.col === col) {
-    _artSort.asc = !_artSort.asc;
-  } else {
-    _artSort.col = col;
-    _artSort.asc = true;
-  }
+  if (_artSort.col === col) _artSort.asc = !_artSort.asc;
+  else { _artSort.col = col; _artSort.asc = true; }
+  renderArtikelen();
+}
+
+function toggleAfgevoerd() {
+  _toonAfgevoerd = !_toonAfgevoerd;
   renderArtikelen();
 }
 
 function renderArtikelen() {
-  const totaal = _artikelen.length;
-  const goed   = _artikelen.filter(a => a.status === 'goedgekeurd').length;
-  const nodig  = _artikelen.filter(a => {
+  // Splits actief en afgevoerd
+  const actief    = _artikelen.filter(a => !a.afgevoerd);
+  const afgevoerd = _artikelen.filter(a => a.afgevoerd);
+
+  const totaal = actief.length;
+  const goed   = actief.filter(a => a.status === 'goedgekeurd').length;
+  const nodig  = actief.filter(a => {
     const kd = a.keuringId ? (_keuringen.find(k => k.id === a.keuringId)?.datum || null) : null;
     return keuringStatus(a.inGebruik, kd) === 'overdue';
   }).length;
@@ -65,7 +68,7 @@ function renderArtikelen() {
 
   const lijst = el('artLijst');
 
-  if (totaal === 0) {
+  if (totaal === 0 && afgevoerd.length === 0) {
     lijst.innerHTML = `<div class="empty-state">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
@@ -76,19 +79,20 @@ function renderArtikelen() {
     return;
   }
 
-  // Kopieer en sorteer
-  const gesorteerd = [..._artikelen].sort((a, b) => {
-    let va = '', vb = '';
+  // Te tonen lijst
+  const teTonenLijst = _toonAfgevoerd ? afgevoerd : actief;
+
+  // Sorteer
+  const gesorteerd = [...teTonenLijst].sort((a, b) => {
     if (_artSort.col === 'status') {
       const rang = { goedgekeurd: 0, afgekeurd: 1 };
-      va = rang[a.status] !== undefined ? rang[a.status] : 2;
-      vb = rang[b.status] !== undefined ? rang[b.status] : 2;
+      const va = rang[a.status] !== undefined ? rang[a.status] : 2;
+      const vb = rang[b.status] !== undefined ? rang[b.status] : 2;
       return _artSort.asc ? va - vb : vb - va;
     }
-    va = String(a[_artSort.col] || '').toLowerCase();
-    vb = String(b[_artSort.col] || '').toLowerCase();
-    const cmp = va.localeCompare(vb, 'nl');
-    return _artSort.asc ? cmp : -cmp;
+    const va = String(a[_artSort.col] || '').toLowerCase();
+    const vb = String(b[_artSort.col] || '').toLowerCase();
+    return _artSort.asc ? va.localeCompare(vb, 'nl') : vb.localeCompare(va, 'nl');
   });
 
   const kolommen = [
@@ -103,51 +107,62 @@ function renderArtikelen() {
     const actief = _artSort.col === k.key;
     const pijl   = actief ? (_artSort.asc ? ' ▲' : ' ▼') : ' ▲';
     return `<th onclick="sortArtikelen('${k.key}')" style="cursor:pointer;user-select:none;white-space:nowrap;${actief ? 'color:var(--green)' : ''}">${k.label}<span style="font-size:10px;opacity:${actief ? '1' : '0.3'}">${pijl}</span></th>`;
-  }).join('') + '<th style="width:70px"></th>';
+  }).join('') + '<th style="width:80px"></th>';
 
-  const rijen = gesorteerd.map(art => {
-    const idx = _artikelen.indexOf(art);
+  const rijen = gesorteerd.length === 0
+    ? `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">Geen ${_toonAfgevoerd ? 'afgevoerde' : 'actieve'} artikelen</td></tr>`
+    : gesorteerd.map(art => {
+        const idx = _artikelen.indexOf(art);
+        const keuringDatum = art.keuringId
+          ? (_keuringen.find(k => k.id === art.keuringId)?.datum || null)
+          : null;
+        const ks = keuringStatus(art.inGebruik, keuringDatum);
+        const kt = keuringTekst(ks, art.inGebruik, keuringDatum);
 
-    // ── BUGFIX: gebruik keuringdatum als startpunt als artikel gekeurd is ──
-    const keuringDatum = art.keuringId
-      ? (_keuringen.find(k => k.id === art.keuringId)?.datum || null)
-      : null;
-    const ks = keuringStatus(art.inGebruik, keuringDatum);
-    const kt = keuringTekst(ks, art.inGebruik, keuringDatum);
-    // ──────────────────────────────────────────────────────────────────────
+        const statusBadge = art.status === 'goedgekeurd'
+          ? '<span class="badge badge-green" style="font-size:11px;padding:2px 8px;white-space:nowrap">✓ Goed</span>'
+          : art.status === 'afgekeurd'
+          ? '<span class="badge badge-red" style="font-size:11px;padding:2px 8px;white-space:nowrap">✗ Afgekeurd</span>'
+          : '<span style="font-size:11px;color:var(--text-muted)">—</span>';
 
-    const statusBadge = art.status === 'goedgekeurd'
-      ? '<span class="badge badge-green" style="font-size:11px;padding:2px 8px;white-space:nowrap">✓ Goed</span>'
-      : art.status === 'afgekeurd'
-      ? '<span class="badge badge-red" style="font-size:11px;padding:2px 8px;white-space:nowrap">✗ Afgekeurd</span>'
-      : '<span style="font-size:11px;color:var(--text-muted)">—</span>';
+        const keurBadge = kt
+          ? `<div style="margin-top:3px"><span class="keur-badge ${ks}" style="font-size:10px">${kt}</span></div>`
+          : '';
 
-    const keurBadge = kt
-      ? `<div style="margin-top:3px"><span class="keur-badge ${ks}" style="font-size:10px">${kt}</span></div>`
-      : '';
+        // Acties: afgevoerde artikelen kunnen niet bewerkt/verwijderd worden
+        const acties = art.afgevoerd
+          ? `<span style="font-size:11px;color:var(--text-muted);font-style:italic">Afgevoerd</span>`
+          : `<div style="display:flex;gap:4px;justify-content:flex-end">
+              ${!art.keuringId ? `<button class="icon-btn" title="Bewerken" onclick="openEdit(${idx})">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>` : ''}
+              <button class="icon-btn" title="Afvoeren" onclick="openAfvoerDialog(${idx})" style="color:var(--warning)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+              </button>
+            </div>`;
 
-    return `<tr>
-      <td>
-        <div style="font-weight:500">${esc(art.omschrijving)}</div>
-        ${art.gebruiker ? `<div style="font-size:11px;color:var(--text-muted)">👤 ${esc(art.gebruiker)}</div>` : ''}
-        ${keurBadge}
-      </td>
-      <td style="color:var(--text-secondary)">${esc(art.merk || '—')}</td>
-      <td style="color:var(--text-secondary)">${esc(art.materiaal || '—')}</td>
-      <td style="font-family:monospace;font-size:12px">${esc(art.serienummer || '—')}</td>
-      <td>${statusBadge}</td>
-      <td>
-        <div style="display:flex;gap:4px;justify-content:flex-end">
-          ${!art.keuringId ? `<button class="icon-btn" title="Bewerken" onclick="openEdit(${idx})">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          </button>` : ''}
-          ${!art.keuringId ? `<button class="icon-btn danger" title="Verwijderen" onclick="verwijder(${idx})">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-          </button>` : ''}
-        </div>
-      </td>
-    </tr>`;
-  }).join('');
+        return `<tr style="${art.afgevoerd ? 'opacity:0.5' : ''}">
+          <td>
+            <div style="font-weight:500">${esc(art.omschrijving)}</div>
+            ${art.gebruiker ? `<div style="font-size:11px;color:var(--text-muted)">👤 ${esc(art.gebruiker)}</div>` : ''}
+            ${keurBadge}
+          </td>
+          <td style="color:var(--text-secondary)">${esc(art.merk || '—')}</td>
+          <td style="color:var(--text-secondary)">${esc(art.materiaal || '—')}</td>
+          <td style="font-family:monospace;font-size:12px">${esc(art.serienummer || '—')}</td>
+          <td>${statusBadge}</td>
+          <td>${acties}</td>
+        </tr>`;
+      }).join('');
+
+  // Toggle knop voor afgevoerde artikelen
+  const afgevoerdToggle = afgevoerd.length > 0
+    ? `<div style="text-align:center;margin-top:12px">
+        <button onclick="toggleAfgevoerd()" style="background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer;text-decoration:underline">
+          ${_toonAfgevoerd ? '← Terug naar actieve artikelen' : `Toon ${afgevoerd.length} afgevoerd artikel${afgevoerd.length !== 1 ? 'en' : ''}`}
+        </button>
+      </div>`
+    : '';
 
   lijst.innerHTML = `
     <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
@@ -155,7 +170,64 @@ function renderArtikelen() {
         <thead><tr style="border-bottom:2px solid var(--border)">${thHtml}</tr></thead>
         <tbody>${rijen}</tbody>
       </table>
+    </div>
+    ${afgevoerdToggle}`;
+}
+
+// ============================================================
+// AFVOER DIALOG
+// ============================================================
+function openAfvoerDialog(idx) {
+  const art = _artikelen[idx];
+  if (!art) return;
+
+  const modal = el('editModal');
+  el('editIdx').value = idx;
+
+  // Misbruik editModal niet — bouw een tijdelijk dialog
+  const overlay = document.createElement('div');
+  overlay.id = 'afvoerOverlay';
+  overlay.className = 'modal-overlay active';
+  overlay.innerHTML = `
+    <div class="modal">
+      <div class="modal-title">Artikel afvoeren</div>
+      <p style="font-size:14px;margin-bottom:16px">
+        <strong>${esc(art.omschrijving)}</strong> wordt uit je actieve lijst verwijderd.<br>
+        Het artikel blijft zichtbaar in je keuringshistorie.
+      </p>
+      <div class="form-group">
+        <label class="form-label">Reden</label>
+        <select class="form-input" id="afvoerReden">
+          <option value="Kapot / onherstelbaar beschadigd">Kapot / onherstelbaar beschadigd</option>
+          <option value="Gestolen">Gestolen</option>
+          <option value="Weggegooid / afgedankt">Weggegooid / afgedankt</option>
+          <option value="Verkocht / overgedragen">Verkocht / overgedragen</option>
+          <option value="Anders">Anders</option>
+        </select>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="document.getElementById('afvoerOverlay').remove()">Annuleren</button>
+        <button class="btn" style="background:var(--warning);color:#fff;width:auto;flex:1" onclick="bevestigAfvoer(${idx})">Afvoeren</button>
+      </div>
     </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function bevestigAfvoer(idx) {
+  const art    = _artikelen[idx];
+  const reden  = document.getElementById('afvoerReden')?.value || 'Afgevoerd';
+  const overlay = document.getElementById('afvoerOverlay');
+
+  if (!art) return;
+
+  const ok = await voerArtikelAf(art.id, reden);
+  if (!ok) return;
+
+  _artikelen[idx].afgevoerd = true;
+  _artikelen[idx].opmerking = reden;
+  if (overlay) overlay.remove();
+  renderArtikelen();
+  toast(`"${art.omschrijving}" afgevoerd`);
 }
 
 // ============================================================
@@ -189,6 +261,7 @@ async function voegToe() {
     toegevoegd:    new Date().toISOString(),
     status:        'nieuw',
     keuringId:     null,
+    afgevoerd:     false,
   };
 
   const btn = el('toevoegBtn');
@@ -255,10 +328,7 @@ async function slaEditOp() {
   const omschr = el('eOmschr').value.trim();
   const sn     = el('eSN').value.trim();
 
-  if (!omschr) {
-    toast('Omschrijving is verplicht', 'error');
-    return;
-  }
+  if (!omschr) { toast('Omschrijving is verplicht', 'error'); return; }
 
   const jaar  = el('eJaar').value.trim();
   const maand = el('eMaand').value;
@@ -288,10 +358,10 @@ async function slaEditOp() {
 async function verwijder(idx) {
   const a = _artikelen[idx];
   if (a.keuringId) {
-    toast('Dit artikel is gekoppeld aan een keuring en kan niet worden verwijderd', 'error');
+    toast('Dit artikel is gekoppeld aan een keuring — gebruik "Afvoeren" om het te verbergen', 'error');
     return;
   }
-  if (!confirm(`"${a.omschrijving}" (${a.serienummer}) verwijderen?`)) return;
+  if (!confirm(`"${a.omschrijving}" (${a.serienummer}) definitief verwijderen?`)) return;
 
   const ok = await verwijderArtikelDb(a.id);
   if (!ok) return;
@@ -447,7 +517,6 @@ function renderCertItems(items, zoek) {
 
 // ============================================================
 // PDF GENERATIE — gedeelde hulpfunctie
-// Bouwt een jsPDF document voor een lijst items
 // ============================================================
 function _bouwPDF(items, ondertitel) {
   const { jsPDF } = window.jspdf;
@@ -462,7 +531,6 @@ function _bouwPDF(items, ondertitel) {
   const lichtgrijs = [220, 220, 220];
   let y          = margin;
 
-  // ── HEADER ──
   doc.setFillColor(...groen);
   doc.rect(0, 0, pageW, 22, 'F');
   doc.setFontSize(14);
@@ -475,7 +543,6 @@ function _bouwPDF(items, ondertitel) {
 
   y = 30;
 
-  // ── CERTIFICAATINFO ──
   const infoRijen = [
     ['Certificaatnummer:', c.nr || '—'],
     ['Keuringsdatum:',     c.datum ? formatDatum(c.datum) : '—'],
@@ -504,7 +571,6 @@ function _bouwPDF(items, ondertitel) {
   doc.line(margin, y, pageW - margin, y);
   y += 6;
 
-  // ── STATISTIEKEN ──
   const goed = items.filter(i => i.status === 'goedgekeurd').length;
   const afk  = items.filter(i => i.status === 'afgekeurd').length;
   doc.setFontSize(8);
@@ -513,7 +579,6 @@ function _bouwPDF(items, ondertitel) {
   doc.text(`${items.length} items  ·  ${goed} goedgekeurd  ·  ${afk} afgekeurd`, margin, y);
   y += 8;
 
-  // ── TABEL HEADER ──
   const colW = { omschr: 62, merk: 28, sn: 35, gebruiker: 28, status: 28 };
   const rowH = 6.5;
 
@@ -531,23 +596,17 @@ function _bouwPDF(items, ondertitel) {
   doc.text('Status',       x, y + 4.5);
   y += rowH;
 
-  // ── TABEL RIJEN ──
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
 
   items.forEach((item, i) => {
-    if (y + rowH > pageH - 16) {
-      doc.addPage();
-      y = margin;
-    }
+    if (y + rowH > pageH - 16) { doc.addPage(); y = margin; }
     if (i % 2 === 0) {
       doc.setFillColor(245, 248, 242);
       doc.rect(margin, y, pageW - margin * 2, rowH, 'F');
     }
     const statusTekst = item.status === 'goedgekeurd' ? 'Goedgekeurd'
-      : item.status === 'afgekeurd'
-        ? 'Afgekeurd' + (item.afkeurcode ? ' (' + item.afkeurcode + ')' : '')
-        : '—';
+      : item.status === 'afgekeurd' ? 'Afgekeurd' + (item.afkeurcode ? ' (' + item.afkeurcode + ')' : '') : '—';
 
     doc.setTextColor(...donker);
     x = margin + 2;
@@ -556,9 +615,9 @@ function _bouwPDF(items, ondertitel) {
     doc.text((item.serienummer || '').substring(0, 18),      x, y + 4.5); x += colW.sn;
     doc.text((item.gebruiker || '').substring(0, 16),        x, y + 4.5); x += colW.gebruiker;
 
-    if (item.status === 'goedgekeurd')      doc.setTextColor(...groen);
-    else if (item.status === 'afgekeurd')   doc.setTextColor(192, 57, 43);
-    else                                    doc.setTextColor(...grijs);
+    if (item.status === 'goedgekeurd')    doc.setTextColor(...groen);
+    else if (item.status === 'afgekeurd') doc.setTextColor(192, 57, 43);
+    else                                  doc.setTextColor(...grijs);
     doc.text(statusTekst.substring(0, 20), x, y + 4.5);
     doc.setTextColor(...donker);
 
@@ -568,17 +627,13 @@ function _bouwPDF(items, ondertitel) {
     y += rowH;
   });
 
-  // ── FOOTER ──
   const totaalPaginas = doc.internal.getNumberOfPages();
   for (let p = 1; p <= totaalPaginas; p++) {
     doc.setPage(p);
     doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...grijs);
-    doc.text(
-      `${c.bedrijf || ''} · Certificaat ${c.nr || ''} · Pagina ${p}/${totaalPaginas}`,
-      pageW / 2, pageH - 6, { align: 'center' }
-    );
+    doc.text(`${c.bedrijf || ''} · Certificaat ${c.nr || ''} · Pagina ${p}/${totaalPaginas}`, pageW / 2, pageH - 6, { align: 'center' });
     doc.setDrawColor(...groen);
     doc.setLineWidth(0.4);
     doc.line(margin, pageH - 9, pageW - margin, pageH - 9);
@@ -587,57 +642,36 @@ function _bouwPDF(items, ondertitel) {
   return doc;
 }
 
-// ============================================================
-// PDF DOWNLOAD — volledig certificaat
-// ============================================================
 function downloadCertPDF() {
   if (!_certData) { toast('Geen certificaat beschikbaar', 'error'); return; }
   if (typeof window.jspdf === 'undefined') { toast('PDF-bibliotheek nog niet geladen', 'error'); return; }
-
-  const items = _actieveFilter === 'alle'
-    ? _certData.items
-    : _certData.items.filter(i => (i.gebruiker || '') === _actieveFilter);
-
-  const c   = _certData.certificaat;
+  const items = _actieveFilter === 'alle' ? _certData.items : _certData.items.filter(i => (i.gebruiker || '') === _actieveFilter);
   const doc = _bouwPDF(items, null);
-  const bestandsnaam = `Certificaat_${(c.nr || 'keuring').replace(/[^a-zA-Z0-9]/g, '_')}_${c.datum || ''}.pdf`;
-  doc.save(bestandsnaam);
+  const c   = _certData.certificaat;
+  doc.save(`Certificaat_${(c.nr || 'keuring').replace(/[^a-zA-Z0-9]/g, '_')}_${c.datum || ''}.pdf`);
   toast('PDF gedownload');
 }
 
-// ============================================================
-// PDF PER GEBRUIKER — apart bestand per gebruiker
-// ============================================================
 function downloadCertPDFPerGebruiker() {
   if (!_certData) { toast('Geen certificaat beschikbaar', 'error'); return; }
   if (typeof window.jspdf === 'undefined') { toast('PDF-bibliotheek nog niet geladen', 'error'); return; }
 
   const c      = _certData.certificaat;
-  const items  = _certData.items;
-
-  // Groepeer op gebruiker
   const groepen = {};
-  items.forEach(i => {
+  _certData.items.forEach(i => {
     const g = i.gebruiker || 'Algemeen';
     if (!groepen[g]) groepen[g] = [];
     groepen[g].push(i);
   });
 
   const gebruikers = Object.keys(groepen);
-
-  // Als maar één gebruiker: gewoon normaal PDF
-  if (gebruikers.length <= 1) {
-    downloadCertPDF();
-    return;
-  }
+  if (gebruikers.length <= 1) { downloadCertPDF(); return; }
 
   gebruikers.forEach(gebruiker => {
     const doc = _bouwPDF(groepen[gebruiker], gebruiker);
-    const safeGebruiker = gebruiker.replace(/[^a-zA-Z0-9]/g, '_');
-    const bestandsnaam  = `Certificaat_${(c.nr || 'keuring').replace(/[^a-zA-Z0-9]/g, '_')}_${safeGebruiker}.pdf`;
-    doc.save(bestandsnaam);
+    const safeG = gebruiker.replace(/[^a-zA-Z0-9]/g, '_');
+    doc.save(`Certificaat_${(c.nr || 'keuring').replace(/[^a-zA-Z0-9]/g, '_')}_${safeG}.pdf`);
   });
-
   toast(`${gebruikers.length} PDF bestanden gedownload`);
 }
 
@@ -735,9 +769,7 @@ function toggleHist(idx) {
 // ============================================================
 // OFFLINE DETECTIE
 // ============================================================
-window.addEventListener('offline', () => {
-  el('offlineBar').classList.add('show');
-});
+window.addEventListener('offline', () => { el('offlineBar').classList.add('show'); });
 window.addEventListener('online', () => {
   el('offlineBar').classList.remove('show');
   toast('Verbinding hersteld', 'success');
