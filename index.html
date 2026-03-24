@@ -352,7 +352,6 @@
 <div class="page" id="page-certificaten">
   <div class="main fade-in">
 
-    <!-- Leeg scherm als geen keuringen -->
     <div id="certLeeg">
       <div class="card">
         <div class="card-body">
@@ -368,10 +367,8 @@
       </div>
     </div>
 
-    <!-- Inhoud als er keuringen zijn -->
     <div id="certView" style="display:none">
 
-      <!-- Meest recente keuring -->
       <div class="cert-header" id="certInfo"></div>
       <div class="stats-row" id="certStats"></div>
       <div id="certFilter" style="display:none">
@@ -379,7 +376,6 @@
       </div>
       <div id="certItems"></div>
 
-      <!-- Historie — alle oudere keuringen -->
       <div id="historieView" style="margin-top:24px;display:none">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
           <h3 style="font-size:15px;font-weight:600;margin:0">Eerdere keuringen</h3>
@@ -408,6 +404,11 @@
   <div class="modal">
     <div class="modal-title">Artikel bewerken</div>
     <input type="hidden" id="editIdx">
+
+    <!-- Melding als artikel gekoppeld is aan keuring — alleen gebruiker bewerkbaar -->
+    <div id="editGekoppeldMelding" style="display:none;margin-bottom:12px;padding:10px 14px;background:rgba(91,154,47,0.08);border:1px solid var(--green);border-radius:8px;font-size:13px;color:var(--text-secondary);">
+      Dit artikel is gekoppeld aan een keuring. Alleen de <strong>gebruiker</strong> kan worden aangepast.
+    </div>
 
     <div class="form-group">
       <label class="form-label">Omschrijving *</label>
