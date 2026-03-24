@@ -523,8 +523,9 @@
      4. branding.js — definieert laadBranding
      5. data.js — definieert laadArtikelen, laadKeuringen
      6. autocomplete.js — definieert acZoeken, acKey, acSluit
-     7. ui.js — definieert renderArtikelen, toast, switchTab etc.
-     8. app.js — start de app via onAuthStateChange (als laatste)
+     7. jsPDF — PDF generatie (vóór ui.js zodat downloadCertPDF beschikbaar is)
+     8. ui.js — definieert renderArtikelen, toast, switchTab etc.
+     9. app.js — start de app via onAuthStateChange (als laatste)
      ============================================================ -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="js/config.js"></script>
@@ -532,6 +533,7 @@
 <script src="js/branding.js"></script>
 <script src="js/data.js"></script>
 <script src="js/autocomplete.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="js/ui.js"></script>
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="js/scanner.js"></script>
