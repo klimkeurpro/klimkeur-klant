@@ -215,8 +215,7 @@ function renderArtikelen() {
     : '';
 
   lijst.innerHTML = `
-    ${zoekbalk}
-    ${filterBtns}
+      ${filterBtns}
     <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
       <table style="min-width:600px;width:100%;border-collapse:collapse">
         <thead><tr style="border-bottom:2px solid var(--border)">${thHtml}</tr></thead>
