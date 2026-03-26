@@ -8,7 +8,8 @@ let _certData        = null;
 let _actieveFilter   = 'alle';
 let _artSort         = { col: 'omschrijving', asc: true };
 let _toonAfgevoerd   = false;
-let _gebruikerFilter = ''; // actief gebruikersfilter op artikelenlijst
+let _gebruikerFilter = '';
+let _artZoek         = ''; // zoekterm artikelenlijst
 
 // ============================================================
 // HELPERS
@@ -49,7 +50,7 @@ function toggleToevoegForm() {
 }
 
 // ============================================================
-// ARTIKELEN RENDEREN — sorteerbare tabel met gebruikersfilter
+// ARTIKELEN RENDEREN — sorteerbare tabel met zoeken en gebruikersfilter
 // ============================================================
 function sortArtikelen(col) {
   if (_artSort.col === col) _artSort.asc = !_artSort.asc;
@@ -64,6 +65,11 @@ function toggleAfgevoerd() {
 
 function setGebruikerFilter(gebruiker) {
   _gebruikerFilter = gebruiker;
+  renderArtikelen();
+}
+
+function zoekArtikelen(waarde) {
+  _artZoek = waarde.toLowerCase().trim();
   renderArtikelen();
 }
 
@@ -105,6 +111,15 @@ function renderArtikelen() {
     teTonenLijst = teTonenLijst.filter(a => (a.gebruiker || '') === _gebruikerFilter);
   }
 
+  // Pas zoekfilter toe
+  if (_artZoek) {
+    teTonenLijst = teTonenLijst.filter(a =>
+      [a.omschrijving, a.merk, a.materiaal, a.serienummer, a.gebruiker].some(v =>
+        (v || '').toLowerCase().includes(_artZoek)
+      )
+    );
+  }
+
   // Sorteer
   const gesorteerd = [...teTonenLijst].sort((a, b) => {
     if (_artSort.col === 'status') {
@@ -133,7 +148,7 @@ function renderArtikelen() {
   }).join('') + '<th style="width:100px"></th>';
 
   const rijen = gesorteerd.length === 0
-    ? `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">Geen artikelen voor deze gebruiker</td></tr>`
+    ? `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--text-muted)">${_artZoek ? 'Geen resultaten voor "' + esc(_artZoek) + '"' : 'Geen artikelen'}</td></tr>`
     : gesorteerd.map(art => {
         const idx = _artikelen.indexOf(art);
         const keuringDatum = art.keuringId
@@ -175,7 +190,18 @@ function renderArtikelen() {
         </tr>`;
       }).join('');
 
-  // Gebruikersfilter knopjes — alleen tonen als er meerdere gebruikers zijn
+  // Zoekbalk
+  const zoekbalk = `
+    <div style="position:relative;margin-bottom:10px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--text-muted);pointer-events:none;">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="text" placeholder="Zoek op omschrijving, merk, serienummer..." value="${esc(_artZoek)}"
+        oninput="zoekArtikelen(this.value)"
+        style="width:100%;padding:8px 12px 8px 34px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;background:#fff;color:var(--text);">
+    </div>`;
+
+  // Gebruikersfilter knopjes
   const filterBtns = gebruikers.length > 1
     ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
         <button onclick="setGebruikerFilter('')" style="padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:${!_gebruikerFilter ? 'var(--green)' : 'transparent'};color:${!_gebruikerFilter ? '#fff' : 'var(--text-secondary)'};font-size:12px;cursor:pointer;">
@@ -200,6 +226,7 @@ function renderArtikelen() {
     : '';
 
   lijst.innerHTML = `
+    ${zoekbalk}
     ${filterBtns}
     <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
       <table style="min-width:600px;width:100%;border-collapse:collapse">
@@ -262,6 +289,20 @@ async function bevestigAfvoer(idx) {
 }
 
 // ============================================================
+// OPMERKING ATTRIBUTIE
+// Wanneer een klant een opmerking plaatst via de klant-app,
+// wordt de naam van de klant als prefix meegegeven zodat
+// in KlimKeur Pro en in de PDF duidelijk is wie de opmerking maakte.
+// ============================================================
+function voegOpmerkingPrefix(opmerking) {
+  if (!opmerking) return '';
+  const naam = _klantNaam || 'Klant';
+  // Voorkom dubbele prefix
+  if (opmerking.startsWith(naam + ': ')) return opmerking;
+  return naam + ': ' + opmerking;
+}
+
+// ============================================================
 // ARTIKEL TOEVOEGEN
 // ============================================================
 async function voegToe() {
@@ -275,9 +316,11 @@ async function voegToe() {
     if (!confirm(`Serienummer "${sn}" staat al in je lijst. Toch toevoegen?`)) return;
   }
 
-  const jaar  = el('fJaar').value.trim();
-  const maand = el('fMaand').value;
-  const art   = {
+  const jaar     = el('fJaar').value.trim();
+  const maand    = el('fMaand').value;
+  const opmerking = el('fOpmerking').value.trim();
+
+  const art = {
     id:            genId(),
     omschrijving:  omschr,
     merk:          el('fMerk').value.trim(),
@@ -288,7 +331,7 @@ async function voegToe() {
     productieDatum: jaar ? (maand ? jaar + '-' + maand : String(jaar)) : '',
     inGebruik:     el('fInGebruik').value,
     gebruiker:     el('fGebruiker').value.trim(),
-    opmerking:     el('fOpmerking').value.trim(),
+    opmerking:     voegOpmerkingPrefix(opmerking),
     toegevoegd:    new Date().toISOString(),
     status:        'nieuw',
     keuringId:     null,
@@ -329,8 +372,7 @@ async function voegToe() {
 
 // ============================================================
 // ARTIKEL BEWERKEN
-// Gebruiker-veld is altijd bewerkbaar — ook op gekeurde artikelen
-// Een gebruikersnaam veranderen heeft geen invloed op keuringsdata
+// Gebruiker altijd bewerkbaar — ook op gekeurde artikelen
 // ============================================================
 function openEdit(idx) {
   const a = _artikelen[idx];
@@ -347,9 +389,14 @@ function openEdit(idx) {
   el('eMaand').value     = a.fabrMaand || '';
   el('eInGebruik').value = a.inGebruik || '';
   el('eGebruiker').value = a.gebruiker || '';
-  el('eOpmerking').value = a.opmerking || '';
 
-  // Als artikel gekoppeld is aan keuring: alleen gebruiker bewerkbaar
+  // Opmerking tonen zonder prefix voor bewerken
+  const naam = _klantNaam || 'Klant';
+  const opmZonderPrefix = (a.opmerking || '').startsWith(naam + ': ')
+    ? a.opmerking.slice((naam + ': ').length)
+    : (a.opmerking || '');
+  el('eOpmerking').value = opmZonderPrefix;
+
   const gekoppeld = !!a.keuringId;
   const velden = ['eOmschr', 'eMerk', 'eMateriaal', 'eSN', 'eJaar', 'eMaand', 'eInGebruik'];
   velden.forEach(id => {
@@ -357,7 +404,6 @@ function openEdit(idx) {
     if (inp) inp.disabled = gekoppeld;
   });
 
-  // Melding tonen als velden vergrendeld zijn
   const melding = el('editGekoppeldMelding');
   if (melding) melding.style.display = gekoppeld ? 'block' : 'none';
 
@@ -366,7 +412,6 @@ function openEdit(idx) {
 
 function sluitModal() {
   el('editModal').classList.remove('active');
-  // Velden weer vrijzetten voor volgende gebruik
   ['eOmschr', 'eMerk', 'eMateriaal', 'eSN', 'eJaar', 'eMaand', 'eInGebruik'].forEach(id => {
     const inp = el(id);
     if (inp) inp.disabled = false;
@@ -380,14 +425,14 @@ async function slaEditOp() {
 
   if (!omschr) { toast('Omschrijving is verplicht', 'error'); return; }
 
-  const jaar  = el('eJaar').value.trim();
-  const maand = el('eMaand').value;
-  const a     = _artikelen[idx];
+  const jaar     = el('eJaar').value.trim();
+  const maand    = el('eMaand').value;
+  const a        = _artikelen[idx];
   const gekoppeld = !!a.keuringId;
+  const opmerking = el('eOpmerking').value.trim();
 
   const bijgewerkt = {
     ...a,
-    // Als gekoppeld: alleen gebruiker opslaan, rest ongewijzigd laten
     omschrijving:   gekoppeld ? a.omschrijving   : omschr,
     merk:           gekoppeld ? a.merk           : el('eMerk').value.trim(),
     serienummer:    gekoppeld ? a.serienummer    : sn,
@@ -395,9 +440,8 @@ async function slaEditOp() {
     fabrMaand:      gekoppeld ? a.fabrMaand      : ((jaar && maand) ? maand : ''),
     productieDatum: gekoppeld ? a.productieDatum : (jaar ? (maand ? jaar + '-' + maand : String(jaar)) : ''),
     inGebruik:      gekoppeld ? a.inGebruik      : el('eInGebruik').value,
-    // Gebruiker altijd bewerkbaar
     gebruiker:      el('eGebruiker').value.trim(),
-    opmerking:      el('eOpmerking').value.trim(),
+    opmerking:      voegOpmerkingPrefix(opmerking),
   };
 
   const ok = await slaArtikelOp(bijgewerkt);
@@ -680,19 +724,38 @@ function _bouwPDF(items, ondertitel) {
   return doc;
 }
 
+// ============================================================
+// PDF DOWNLOAD
+// Respecteert actief gebruikersfilter:
+// - Filter actief → één PDF voor die gebruiker
+// - Geen filter → volledige PDF
+// ============================================================
 function downloadCertPDF() {
   if (!_certData) { toast('Geen certificaat beschikbaar', 'error'); return; }
   if (typeof window.jspdf === 'undefined') { toast('PDF-bibliotheek nog niet geladen', 'error'); return; }
-  const items = _actieveFilter === 'alle' ? _certData.items : _certData.items.filter(i => (i.gebruiker || '') === _actieveFilter);
+  const items = _actieveFilter === 'alle'
+    ? _certData.items
+    : _certData.items.filter(i => (i.gebruiker || '') === _actieveFilter);
   const doc = _bouwPDF(items, _actieveFilter !== 'alle' ? _actieveFilter : null);
   const c   = _certData.certificaat;
   doc.save(`Certificaat_${(c.nr || 'keuring').replace(/[^a-zA-Z0-9]/g, '_')}_${c.datum || ''}.pdf`);
   toast('PDF gedownload');
 }
 
+// ============================================================
+// PDF PER GEBRUIKER
+// Als er een gebruikersfilter actief is → alleen die gebruiker
+// Anders → één PDF per gebruiker
+// ============================================================
 function downloadCertPDFPerGebruiker() {
   if (!_certData) { toast('Geen certificaat beschikbaar', 'error'); return; }
   if (typeof window.jspdf === 'undefined') { toast('PDF-bibliotheek nog niet geladen', 'error'); return; }
+
+  // Als er al een filter actief is → gewoon die ene PDF maken
+  if (_actieveFilter !== 'alle') {
+    downloadCertPDF();
+    return;
+  }
 
   const c      = _certData.certificaat;
   const groepen = {};
