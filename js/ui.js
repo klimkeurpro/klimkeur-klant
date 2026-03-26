@@ -190,18 +190,7 @@ function renderArtikelen() {
         </tr>`;
       }).join('');
 
-  // Zoekbalk
-  const zoekbalk = `
-    <div style="position:relative;margin-bottom:10px;">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--text-muted);pointer-events:none;">
-        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-      </svg>
-      <input type="text" placeholder="Zoek op omschrijving, merk, serienummer..." value="${esc(_artZoek)}"
-        oninput="zoekArtikelen(this.value)"
-        style="width:100%;padding:8px 12px 8px 34px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;background:#fff;color:var(--text);">
-    </div>`;
-
-  // Gebruikersfilter knopjes
+   // Gebruikersfilter knopjes
   const filterBtns = gebruikers.length > 1
     ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
         <button onclick="setGebruikerFilter('')" style="padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:${!_gebruikerFilter ? 'var(--green)' : 'transparent'};color:${!_gebruikerFilter ? '#fff' : 'var(--text-secondary)'};font-size:12px;cursor:pointer;">
