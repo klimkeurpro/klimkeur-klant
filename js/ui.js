@@ -190,7 +190,7 @@ function renderArtikelen() {
         </tr>`;
       }).join('');
 
-   // Gebruikersfilter knopjes
+  // Gebruikersfilter knopjes
   const filterBtns = gebruikers.length > 1
     ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;">
         <button onclick="setGebruikerFilter('')" style="padding:4px 10px;border-radius:20px;border:1px solid var(--border);background:${!_gebruikerFilter ? 'var(--green)' : 'transparent'};color:${!_gebruikerFilter ? '#fff' : 'var(--text-secondary)'};font-size:12px;cursor:pointer;">
@@ -215,7 +215,7 @@ function renderArtikelen() {
     : '';
 
   lijst.innerHTML = `
-      ${filterBtns}
+    ${filterBtns}
     <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
       <table style="min-width:600px;width:100%;border-collapse:collapse">
         <thead><tr style="border-bottom:2px solid var(--border)">${thHtml}</tr></thead>
@@ -278,14 +278,10 @@ async function bevestigAfvoer(idx) {
 
 // ============================================================
 // OPMERKING ATTRIBUTIE
-// Wanneer een klant een opmerking plaatst via de klant-app,
-// wordt de naam van de klant als prefix meegegeven zodat
-// in KlimKeur Pro en in de PDF duidelijk is wie de opmerking maakte.
 // ============================================================
 function voegOpmerkingPrefix(opmerking) {
   if (!opmerking) return '';
   const naam = _klantNaam || 'Klant';
-  // Voorkom dubbele prefix
   if (opmerking.startsWith(naam + ': ')) return opmerking;
   return naam + ': ' + opmerking;
 }
@@ -304,26 +300,26 @@ async function voegToe() {
     if (!confirm(`Serienummer "${sn}" staat al in je lijst. Toch toevoegen?`)) return;
   }
 
-  const jaar     = el('fJaar').value.trim();
-  const maand    = el('fMaand').value;
+  const jaar      = el('fJaar').value.trim();
+  const maand     = el('fMaand').value;
   const opmerking = el('fOpmerking').value.trim();
 
   const art = {
-    id:            genId(),
-    omschrijving:  omschr,
-    merk:          el('fMerk').value.trim(),
-    materiaal:     el('fMateriaal').value.trim() || el('fOmschr').dataset.materiaal || '',
-    serienummer:   sn,
-    fabrJaar:      jaar ? parseInt(jaar) : '',
-    fabrMaand:     (jaar && maand) ? maand : '',
+    id:             genId(),
+    omschrijving:   omschr,
+    merk:           el('fMerk').value.trim(),
+    materiaal:      el('fMateriaal').value.trim() || el('fOmschr').dataset.materiaal || '',
+    serienummer:    sn,
+    fabrJaar:       jaar ? parseInt(jaar) : '',
+    fabrMaand:      (jaar && maand) ? maand : '',
     productieDatum: jaar ? (maand ? jaar + '-' + maand : String(jaar)) : '',
-    inGebruik:     el('fInGebruik').value,
-    gebruiker:     el('fGebruiker').value.trim(),
-    opmerking:     voegOpmerkingPrefix(opmerking),
-    toegevoegd:    new Date().toISOString(),
-    status:        'nieuw',
-    keuringId:     null,
-    afgevoerd:     false,
+    inGebruik:      el('fInGebruik').value,
+    gebruiker:      el('fGebruiker').value.trim(),
+    opmerking:      voegOpmerkingPrefix(opmerking),
+    toegevoegd:     new Date().toISOString(),
+    status:         'nieuw',
+    keuringId:      null,
+    afgevoerd:      false,
   };
 
   const btn = el('toevoegBtn');
@@ -378,7 +374,7 @@ function openEdit(idx) {
   el('eInGebruik').value = a.inGebruik || '';
   el('eGebruiker').value = a.gebruiker || '';
 
-  // Opmerking tonen zonder prefix voor bewerken
+  // Opmerking tonen zonder prefix
   const naam = _klantNaam || 'Klant';
   const opmZonderPrefix = (a.opmerking || '').startsWith(naam + ': ')
     ? a.opmerking.slice((naam + ': ').length)
@@ -413,9 +409,9 @@ async function slaEditOp() {
 
   if (!omschr) { toast('Omschrijving is verplicht', 'error'); return; }
 
-  const jaar     = el('eJaar').value.trim();
-  const maand    = el('eMaand').value;
-  const a        = _artikelen[idx];
+  const jaar      = el('eJaar').value.trim();
+  const maand     = el('eMaand').value;
+  const a         = _artikelen[idx];
   const gekoppeld = !!a.keuringId;
   const opmerking = el('eOpmerking').value.trim();
 
@@ -488,7 +484,7 @@ function toonCertificaat(keuring) {
         <span class="badge" style="background:rgba(255,255,255,.2);color:#fff">${c.afgerond ? '✓ Afgerond' : 'Concept'}</span>
         <button onclick="downloadCertPDF()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:6px;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          PDF
+          Overzicht PDF
         </button>
         <button onclick="downloadCertPDFPerGebruiker()" style="background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:6px;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
@@ -586,38 +582,55 @@ function renderCertItems(items, zoek) {
 }
 
 // ============================================================
-// PDF GENERATIE
+// PDF GENERATIE — MATERIAALOVERZICHT
+//
+// Dit is nadrukkelijk GEEN officieel certificaat.
+// - Geen handtekening van de keurmeester
+// - Geen juridische status
+// - Wél: keuringsstatus, vervaldatum, opmerkingen
+// - Duidelijk gelabeld als "Materiaaloverzicht"
+// - Verwijzing naar het officiële certificaatnummer
+//
+// Het officiële certificaat wordt door de keurmeester
+// verstuurd per e-mail vanuit KlimKeur Pro.
 // ============================================================
 function _bouwPDF(items, ondertitel) {
   const { jsPDF } = window.jspdf;
-  const c        = _certData.certificaat;
-  const doc      = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const pageW    = doc.internal.pageSize.getWidth();
-  const pageH    = doc.internal.pageSize.getHeight();
-  const margin   = 14;
-  const groen    = [91, 154, 47];
-  const donker   = [30, 30, 30];
-  const grijs    = [100, 100, 100];
+  const c          = _certData.certificaat;
+  const vandaag    = new Date().toLocaleDateString('nl-NL');
+  const doc        = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const pageW      = doc.internal.pageSize.getWidth();
+  const pageH      = doc.internal.pageSize.getHeight();
+  const margin     = 14;
+  const contentW   = pageW - margin * 2;
+  const groen      = [91, 154, 47];
+  const donker     = [30, 30, 30];
+  const grijs      = [100, 100, 100];
   const lichtgrijs = [220, 220, 220];
-  let y          = margin;
+  const oranje     = [200, 100, 0];
+  const rood       = [192, 57, 43];
+  let y            = margin;
 
+  // ---- HEADER ----
   doc.setFillColor(...groen);
   doc.rect(0, 0, pageW, 22, 'F');
   doc.setFontSize(14);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(255, 255, 255);
-  doc.text('KEURINGS-CERTIFICAAT', margin, 14);
+  doc.text('MATERIAALOVERZICHT', margin, 14);
   doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
   doc.text(c.bedrijf || '', pageW - margin, 14, { align: 'right' });
 
   y = 30;
 
+  // ---- INFO BLOK ----
   const infoRijen = [
-    ['Certificaatnummer:', c.nr || '—'],
-    ['Keuringsdatum:',     c.datum ? formatDatum(c.datum) : '—'],
-    ['Keurmeester:',       c.keurmeester || '—'],
-    ['Eigenaar:',          _klantNaam || '—'],
+    ['Eigenaar:',       _klantNaam || '—'],
+    ['Keuringsdatum:',  c.datum ? formatDatum(c.datum) : '—'],
+    ['Keurmeester:',    c.keurmeester || '—'],
+    ['Op certificaat:', c.nr || '—'],
+    ['Gegenereerd op:', vandaag],
   ];
   if (ondertitel) infoRijen.push(['Gebruiker:', ondertitel]);
 
@@ -631,65 +644,127 @@ function _bouwPDF(items, ondertitel) {
     y += 5.5;
   });
 
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...groen);
-  doc.text(c.afgerond ? '✓ Afgerond' : 'Concept', pageW - margin, 32, { align: 'right' });
-
-  y += 4;
+  y += 2;
   doc.setDrawColor(...groen);
   doc.setLineWidth(0.6);
   doc.line(margin, y, pageW - margin, y);
-  y += 6;
+  y += 5;
 
-  const goed = items.filter(i => i.status === 'goedgekeurd').length;
-  const afk  = items.filter(i => i.status === 'afgekeurd').length;
-  doc.setFontSize(8);
+  // ---- DISCLAIMER ----
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'italic');
   doc.setTextColor(...grijs);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`${items.length} items  ·  ${goed} goedgekeurd  ·  ${afk} afgekeurd`, margin, y);
-  y += 8;
+  const disclaimer = 'Dit is een persoonlijk materiaaloverzicht, geen officieel keuringscertificaat. ' +
+    'Het officiële certificaat is per e-mail verstuurd door uw keurmeester.';
+  const discLines = doc.splitTextToSize(disclaimer, contentW);
+  doc.text(discLines, margin, y);
+  y += discLines.length * 3.2 + 5;
 
-  const colW = { omschr: 62, merk: 28, sn: 35, gebruiker: 28, status: 28 };
-  const rowH = 6.5;
+  // ---- TABEL HEADER ----
+  const rowH   = 6.5;
+  const colW   = {
+    nr:        8,
+    omschr:    55,
+    sn:        30,
+    status:    22,
+    keuring:   35,
+    opmerking: 0, // vult de rest
+  };
+  // Bereken opmerking breedte
+  colW.opmerking = contentW - colW.nr - colW.omschr - colW.sn - colW.status - colW.keuring;
 
   doc.setFillColor(...groen);
-  doc.rect(margin, y, pageW - margin * 2, rowH, 'F');
+  doc.rect(margin, y, contentW, rowH, 'F');
   doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(255, 255, 255);
 
   let x = margin + 2;
+  doc.text('#',            x, y + 4.5); x += colW.nr;
   doc.text('Omschrijving', x, y + 4.5); x += colW.omschr;
-  doc.text('Merk',         x, y + 4.5); x += colW.merk;
   doc.text('Serienummer',  x, y + 4.5); x += colW.sn;
-  doc.text('Gebruiker',    x, y + 4.5); x += colW.gebruiker;
-  doc.text('Status',       x, y + 4.5);
+  doc.text('Status',       x, y + 4.5); x += colW.status;
+  doc.text('Volgende keuring', x, y + 4.5); x += colW.keuring;
+  doc.text('Opmerking',    x, y + 4.5);
   y += rowH;
 
+  // ---- TABEL RIJEN ----
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
 
   items.forEach((item, i) => {
-    if (y + rowH > pageH - 16) { doc.addPage(); y = margin; }
+    if (y + rowH > pageH - 14) {
+      doc.addPage();
+      y = margin;
+    }
+
     if (i % 2 === 0) {
       doc.setFillColor(245, 248, 242);
-      doc.rect(margin, y, pageW - margin * 2, rowH, 'F');
+      doc.rect(margin, y, contentW, rowH, 'F');
     }
+
+    // Bereken keuringsstatus voor dit item
+    const keuringDatum = item.keuring_datum || null;
+    const inGebruik    = item.in_gebruik || null;
+    const ks           = keuringStatus(inGebruik, keuringDatum);
+    const kt           = keuringTekst(ks, inGebruik, keuringDatum);
+
     const statusTekst = item.status === 'goedgekeurd' ? 'Goedgekeurd'
-      : item.status === 'afgekeurd' ? 'Afgekeurd' + (item.afkeurcode ? ' (' + item.afkeurcode + ')' : '') : '—';
+      : item.status === 'afgekeurd' ? 'Afgekeurd'
+      : '—';
 
     doc.setTextColor(...donker);
     x = margin + 2;
-    doc.text((item.omschrijving || '').substring(0, 32),    x, y + 4.5); x += colW.omschr;
-    doc.text((item.merk || '').substring(0, 16),             x, y + 4.5); x += colW.merk;
-    doc.text((item.serienummer || '').substring(0, 18),      x, y + 4.5); x += colW.sn;
-    doc.text((item.gebruiker || '').substring(0, 16),        x, y + 4.5); x += colW.gebruiker;
 
+    // #
+    doc.text(String(i + 1), x, y + 4.5); x += colW.nr;
+
+    // Omschrijving + merk klein eronder
+    doc.setFont('helvetica', 'bold');
+    doc.text((item.omschrijving || '').substring(0, 28), x, y + 4.5);
+    doc.setFont('helvetica', 'normal');
+    x += colW.omschr;
+
+    // Serienummer
+    doc.setFont('courier', 'normal');
+    doc.setFontSize(6.5);
+    doc.text((item.serienummer || '—').substring(0, 18), x, y + 4.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    x += colW.sn;
+
+    // Status — kleur op basis van status
     if (item.status === 'goedgekeurd')    doc.setTextColor(...groen);
-    else if (item.status === 'afgekeurd') doc.setTextColor(192, 57, 43);
+    else if (item.status === 'afgekeurd') doc.setTextColor(...rood);
     else                                  doc.setTextColor(...grijs);
-    doc.text(statusTekst.substring(0, 20), x, y + 4.5);
+    doc.text(statusTekst, x, y + 4.5);
     doc.setTextColor(...donker);
+    x += colW.status;
+
+    // Volgende keuring — kleur op basis van urgentie
+    if (kt) {
+      if (ks === 'overdue')    doc.setTextColor(...rood);
+      else if (ks === 'soon')  doc.setTextColor(...oranje);
+      else                     doc.setTextColor(...groen);
+      doc.setFontSize(6.5);
+      doc.text(kt.substring(0, 22), x, y + 4.5);
+      doc.setTextColor(...donker);
+      doc.setFontSize(7.5);
+    } else {
+      doc.setTextColor(...grijs);
+      doc.text('—', x, y + 4.5);
+      doc.setTextColor(...donker);
+    }
+    x += colW.keuring;
+
+    // Opmerking
+    if (item.opmerking) {
+      doc.setFontSize(6.5);
+      doc.setTextColor(...oranje);
+      doc.text((item.opmerking || '').substring(0, 30), x, y + 4.5);
+      doc.setTextColor(...donker);
+      doc.setFontSize(7.5);
+    }
 
     doc.setDrawColor(...lichtgrijs);
     doc.setLineWidth(0.2);
@@ -697,13 +772,39 @@ function _bouwPDF(items, ondertitel) {
     y += rowH;
   });
 
+  // ---- SAMENVATTING ----
+  y += 4;
+  const goed = items.filter(i => i.status === 'goedgekeurd').length;
+  const afk  = items.filter(i => i.status === 'afgekeurd').length;
+  const nodig = items.filter(i => {
+    const ks = keuringStatus(i.in_gebruik || null, i.keuring_datum || null);
+    return ks === 'overdue';
+  }).length;
+
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...donker);
+  doc.text(`${items.length} artikelen`, margin, y);
+  doc.setTextColor(...groen);
+  doc.text(`${goed} goedgekeurd`, margin + 30, y);
+  doc.setTextColor(...rood);
+  doc.text(`${afk} afgekeurd`, margin + 65, y);
+  if (nodig > 0) {
+    doc.setTextColor(...oranje);
+    doc.text(`${nodig} keuring nodig`, margin + 95, y);
+  }
+
+  // ---- FOOTER op alle pagina's ----
   const totaalPaginas = doc.internal.getNumberOfPages();
   for (let p = 1; p <= totaalPaginas; p++) {
     doc.setPage(p);
     doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...grijs);
-    doc.text(`${c.bedrijf || ''} · Certificaat ${c.nr || ''} · Pagina ${p}/${totaalPaginas}`, pageW / 2, pageH - 6, { align: 'center' });
+    doc.text(
+      `${_klantNaam || ''} · Materiaaloverzicht · Gegenereerd ${vandaag} · Pagina ${p}/${totaalPaginas}`,
+      pageW / 2, pageH - 6, { align: 'center' }
+    );
     doc.setDrawColor(...groen);
     doc.setLineWidth(0.4);
     doc.line(margin, pageH - 9, pageW - margin, pageH - 9);
@@ -713,39 +814,34 @@ function _bouwPDF(items, ondertitel) {
 }
 
 // ============================================================
-// PDF DOWNLOAD
-// Respecteert actief gebruikersfilter:
-// - Filter actief → één PDF voor die gebruiker
-// - Geen filter → volledige PDF
+// PDF DOWNLOAD — respecteert actief gebruikersfilter
 // ============================================================
 function downloadCertPDF() {
-  if (!_certData) { toast('Geen certificaat beschikbaar', 'error'); return; }
+  if (!_certData) { toast('Geen overzicht beschikbaar', 'error'); return; }
   if (typeof window.jspdf === 'undefined') { toast('PDF-bibliotheek nog niet geladen', 'error'); return; }
   const items = _actieveFilter === 'alle'
     ? _certData.items
     : _certData.items.filter(i => (i.gebruiker || '') === _actieveFilter);
   const doc = _bouwPDF(items, _actieveFilter !== 'alle' ? _actieveFilter : null);
   const c   = _certData.certificaat;
-  doc.save(`Certificaat_${(c.nr || 'keuring').replace(/[^a-zA-Z0-9]/g, '_')}_${c.datum || ''}.pdf`);
-  toast('PDF gedownload');
+  const safeNaam = (_klantNaam || 'overzicht').replace(/[^a-zA-Z0-9]/g, '_');
+  doc.save(`Materiaaloverzicht_${safeNaam}_${c.datum || ''}.pdf`);
+  toast('Overzicht gedownload');
 }
 
 // ============================================================
 // PDF PER GEBRUIKER
-// Als er een gebruikersfilter actief is → alleen die gebruiker
-// Anders → één PDF per gebruiker
 // ============================================================
 function downloadCertPDFPerGebruiker() {
-  if (!_certData) { toast('Geen certificaat beschikbaar', 'error'); return; }
+  if (!_certData) { toast('Geen overzicht beschikbaar', 'error'); return; }
   if (typeof window.jspdf === 'undefined') { toast('PDF-bibliotheek nog niet geladen', 'error'); return; }
 
-  // Als er al een filter actief is → gewoon die ene PDF maken
+  // Filter actief → alleen die gebruiker
   if (_actieveFilter !== 'alle') {
     downloadCertPDF();
     return;
   }
 
-  const c      = _certData.certificaat;
   const groepen = {};
   _certData.items.forEach(i => {
     const g = i.gebruiker || 'Algemeen';
@@ -756,12 +852,15 @@ function downloadCertPDFPerGebruiker() {
   const gebruikers = Object.keys(groepen);
   if (gebruikers.length <= 1) { downloadCertPDF(); return; }
 
+  const safeNaam = (_klantNaam || 'overzicht').replace(/[^a-zA-Z0-9]/g, '_');
+  const c        = _certData.certificaat;
+
   gebruikers.forEach(gebruiker => {
-    const doc = _bouwPDF(groepen[gebruiker], gebruiker);
+    const doc  = _bouwPDF(groepen[gebruiker], gebruiker);
     const safeG = gebruiker.replace(/[^a-zA-Z0-9]/g, '_');
-    doc.save(`Certificaat_${(c.nr || 'keuring').replace(/[^a-zA-Z0-9]/g, '_')}_${safeG}.pdf`);
+    doc.save(`Materiaaloverzicht_${safeNaam}_${safeG}_${c.datum || ''}.pdf`);
   });
-  toast(`${gebruikers.length} PDF bestanden gedownload`);
+  toast(`${gebruikers.length} overzichten gedownload`);
 }
 
 // ============================================================
