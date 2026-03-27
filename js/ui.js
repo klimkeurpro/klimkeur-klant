@@ -819,10 +819,8 @@ function _bouwPDF(items, ondertitel) {
 function downloadCertPDF() {
   if (!_certData) { toast('Geen overzicht beschikbaar', 'error'); return; }
   if (typeof window.jspdf === 'undefined') { toast('PDF-bibliotheek nog niet geladen', 'error'); return; }
-  const items = _actieveFilter === 'alle'
-    ? _certData.items
-    : _certData.items.filter(i => (i.gebruiker || '') === _actieveFilter);
-  const doc = _bouwPDF(items, _actieveFilter !== 'alle' ? _actieveFilter : null);
+  const items = _certData.items;
+  const doc = _bouwPDF(items, null);
   const c   = _certData.certificaat;
   const safeNaam = (_klantNaam || 'overzicht').replace(/[^a-zA-Z0-9]/g, '_');
   doc.save(`Materiaaloverzicht_${safeNaam}_${c.datum || ''}.pdf`);
