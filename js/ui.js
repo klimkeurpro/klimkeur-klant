@@ -855,7 +855,16 @@ function downloadCertPDFPerGebruiker() {
   });
 
   const gebruikers = Object.keys(groepen);
-  if (gebruikers.length <= 1) { downloadCertPDF(); return; }
+  if (gebruikers.length <= 1)
+  const gebruiker = gebruikers[0] || 'Algemeen';
+    const doc    = _bouwPDF(_certData.items, gebruiker);
+    const safeG  = gebruiker.replace(/[^a-zA-Z0-9]/g, '_');
+    const safeNaam = (_klantNaam || 'overzicht').replace(/[^a-zA-Z0-9]/g, '_');
+    const c      = _certData.certificaat;
+    doc.save(`Materiaaloverzicht_${safeNaam}_${safeG}_${c.datum || ''}.pdf`);
+    toast('Overzicht gedownload');
+    return;
+  }
 
   const safeNaam = (_klantNaam || 'overzicht').replace(/[^a-zA-Z0-9]/g, '_');
   const c        = _certData.certificaat;
