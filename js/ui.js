@@ -835,8 +835,15 @@ function downloadCertPDFPerGebruiker() {
   if (typeof window.jspdf === 'undefined') { toast('PDF-bibliotheek nog niet geladen', 'error'); return; }
 
   // Filter actief → alleen die gebruiker
+  // Filter actief → PDF alleen voor die gebruiker
   if (_actieveFilter !== 'alle') {
-    downloadCertPDF();
+    const items  = _certData.items.filter(i => (i.gebruiker || '') === _actieveFilter);
+    const doc    = _bouwPDF(items, _actieveFilter);
+    const safeG  = _actieveFilter.replace(/[^a-zA-Z0-9]/g, '_');
+    const safeNaam = (_klantNaam || 'overzicht').replace(/[^a-zA-Z0-9]/g, '_');
+    const c      = _certData.certificaat;
+    doc.save(`Materiaaloverzicht_${safeNaam}_${safeG}_${c.datum || ''}.pdf`);
+    toast('Overzicht gedownload');
     return;
   }
 
