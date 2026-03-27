@@ -855,7 +855,7 @@ function downloadCertPDFPerGebruiker() {
   });
 
   const gebruikers = Object.keys(groepen);
-  if (gebruikers.length <= 1)
+  if (gebruikers.length <= 1)  {
   const gebruiker = gebruikers[0] || 'Algemeen';
     const doc    = _bouwPDF(_certData.items, gebruiker);
     const safeG  = gebruiker.replace(/[^a-zA-Z0-9]/g, '_');
