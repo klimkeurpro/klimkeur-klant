@@ -25,7 +25,7 @@
 let _userId    = null;   // Supabase auth user id
 let _klantId   = null;   // id in de klanten tabel
 let _klantNaam = '';     // weergavenaam voor in de header
-let _bedrijfId = null;   // bedrijf_id (voor branding en RLS)
+let _bedrijfId    = null; let _klantBedrijf = '';   // bedrijf_id (voor branding en RLS)
 
 // Flow-staat
 let _inviteMode = false;  // true zolang invite-activering bezig is
