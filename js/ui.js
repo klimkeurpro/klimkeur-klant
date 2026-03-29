@@ -822,7 +822,7 @@ function downloadCertPDF() {
   const items = _certData.items;
   const doc = _bouwPDF(items, null);
   const c   = _certData.certificaat;
-  const safeNaam = (_klantNaam || 'overzicht').replace(/[^a-zA-Z0-9]/g, '_');
+  const safeNaam = (_klantBedrijf || _klantNaam || 'overzicht').replace(/[^a-zA-Z0-9]/g, '_');
   doc.save(`Materiaaloverzicht_${safeNaam}_${c.datum || ''}.pdf`);
   toast('Overzicht gedownload');
 }
@@ -840,7 +840,7 @@ function downloadCertPDFPerGebruiker() {
     const items  = _certData.items.filter(i => (i.gebruiker || '') === _actieveFilter);
     const doc    = _bouwPDF(items, _actieveFilter);
     const safeG  = _actieveFilter.replace(/[^a-zA-Z0-9]/g, '_');
-    const safeNaam = (_klantNaam || 'overzicht').replace(/[^a-zA-Z0-9]/g, '_');
+    const safeNaam = (_klantBedrijf || _klantNaam || 'overzicht').replace(/[^a-zA-Z0-9]/g, '_');
     const c      = _certData.certificaat;
     doc.save(`Materiaaloverzicht_${safeNaam}_${safeG}_${c.datum || ''}.pdf`);
     toast('Overzicht gedownload');
@@ -859,14 +859,14 @@ function downloadCertPDFPerGebruiker() {
   const gebruiker = gebruikers[0] || 'Algemeen';
     const doc    = _bouwPDF(_certData.items, gebruiker);
     const safeG  = gebruiker.replace(/[^a-zA-Z0-9]/g, '_');
-    const safeNaam = (_klantNaam || 'overzicht').replace(/[^a-zA-Z0-9]/g, '_');
+    const safeNaam = (_klantBedrijf || _klantNaam || 'overzicht').replace(/[^a-zA-Z0-9]/g, '_');
     const c      = _certData.certificaat;
     doc.save(`Materiaaloverzicht_${safeNaam}_${safeG}_${c.datum || ''}.pdf`);
     toast('Overzicht gedownload');
     return;
   }
 
-  const safeNaam = (_klantNaam || 'overzicht').replace(/[^a-zA-Z0-9]/g, '_');
+  const safeNaam = (_klantBedrijf || _klantNaam || 'overzicht').replace(/[^a-zA-Z0-9]/g, '_');
   const c        = _certData.certificaat;
 
   gebruikers.forEach(gebruiker => {
