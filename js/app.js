@@ -162,7 +162,7 @@ function toonDebug() {
     _keuringen: <b>${_keuringen?.length ?? 0}</b><br>
     _artikelen: <b>${_artikelen?.length ?? 0}</b><br>
     <br><b>Eerste cert item velden:</b><br>
-    ${(_certData?.items?.[0]) ? Object.entries(_certData.items[0]).map(([k,v]) => k+': <b>'+(v??'null')+'</b>').join('<br>') : 'geen item'}  
+    ${(_certData?.items?.[0]) ? Object.entries(_certData.items[0]).map(([k,v]) => k+': <b>'+(v??'null')+'</b>').join('<br>') : 'geen item'}`  
   document.body.appendChild(div);
 }
 
