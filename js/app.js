@@ -155,13 +155,14 @@ function toonDebug() {
   div.id = 'debugPaneel';
   div.style.cssText = 'position:fixed;bottom:60px;left:8px;right:8px;background:#1a1a2e;color:#0ff;font-size:11px;font-family:monospace;padding:10px;border-radius:8px;z-index:9999;max-height:200px;overflow-y:auto;border:1px solid #0ff;';
   div.innerHTML = `
-    <b>DEBUG</b><br>
+  <b>DEBUG</b><br>
     _bedrijfId: <b>${_bedrijfId ?? 'NULL'}</b><br>
     _klantId: <b>${_klantId ?? 'NULL'}</b><br>
     _certData: <b>${_certData ? 'aanwezig (' + (_certData.items?.length ?? 0) + ' items)' : 'NULL'}</b><br>
     _keuringen: <b>${_keuringen?.length ?? 0}</b><br>
-    _artikelen: <b>${_artikelen?.length ?? 0}</b>
-  `;
+    _artikelen: <b>${_artikelen?.length ?? 0}</b><br>
+    <br><b>Eerste cert item velden:</b><br>
+    ${(_certData?.items?.[0]) ? Object.entries(_certData.items[0]).map(([k,v]) => k+': <b>'+(v??'null')+'</b>').join('<br>') : 'geen item'}  
   document.body.appendChild(div);
 }
 
