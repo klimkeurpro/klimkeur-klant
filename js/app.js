@@ -145,3 +145,29 @@ function setBadge(type, tekst) {
   b.className  = 'status-badge ' + type;
   b.textContent = tekst;
 }
+// ============================================================
+// DEBUG PANEEL — tijdelijk, na diagnose verwijderen
+// ============================================================
+function toonDebug() {
+  const bestaand = document.getElementById('debugPaneel');
+  if (bestaand) { bestaand.remove(); return; }
+  const div = document.createElement('div');
+  div.id = 'debugPaneel';
+  div.style.cssText = 'position:fixed;bottom:60px;left:8px;right:8px;background:#1a1a2e;color:#0ff;font-size:11px;font-family:monospace;padding:10px;border-radius:8px;z-index:9999;max-height:200px;overflow-y:auto;border:1px solid #0ff;';
+  div.innerHTML = `
+    <b>DEBUG</b><br>
+    _bedrijfId: <b>${_bedrijfId ?? 'NULL'}</b><br>
+    _klantId: <b>${_klantId ?? 'NULL'}</b><br>
+    _certData: <b>${_certData ? 'aanwezig (' + (_certData.items?.length ?? 0) + ' items)' : 'NULL'}</b><br>
+    _keuringen: <b>${_keuringen?.length ?? 0}</b><br>
+    _artikelen: <b>${_artikelen?.length ?? 0}</b>
+  `;
+  document.body.appendChild(div);
+}
+
+// Activeer met 5x tikken op het header-logo
+const _dbgLogo = document.querySelector('.header-logo, .app-header img, header img');
+if (_dbgLogo) {
+  let _dbgTaps = 0;
+  _dbgLogo.addEventListener('click', () => { _dbgTaps++; if (_dbgTaps >= 5) { _dbgTaps = 0; toonDebug(); } });
+}
