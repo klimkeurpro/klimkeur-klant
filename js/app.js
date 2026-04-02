@@ -71,7 +71,7 @@ async function verwerkInlog(user) {
   }
 
   _klantId   = klant.id;
-  _klantNaam    = klant.contactpersoon || klant.bedrijf || ''; _klantBedrijf = klant.bedrijf || klant.contactpersoon || '';
+  _klantNaam    =klant.contactpersoon || klant.bedrijf || '';
   _bedrijfId = klant.bedrijf_id || null;
 
   const logoutBtn = document.getElementById('logoutBtn');
