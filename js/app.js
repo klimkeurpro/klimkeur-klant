@@ -153,8 +153,6 @@ function toonDebug() {
   if (bestaand) { bestaand.remove(); return; }
   const div = document.createElement('div');
   div.id = 'debugPaneel';
-  <br><b>Keuring[0] items:</b> <b>${_keuringen?.[0]?._items?.length ?? 'geen _items veld'}</b><br>
-    <b>Keuring[0] id:</b> <b>${_keuringen?.[0]?.id ?? 'geen id'}</b><br>
   div.style.cssText = 'position:fixed;bottom:60px;left:8px;right:8px;background:#1a1a2e;color:#0ff;font-size:11px;font-family:monospace;padding:10px;border-radius:8px;z-index:9999;max-height:200px;overflow-y:auto;border:1px solid #0ff;';
   div.innerHTML = `
   <b>DEBUG</b><br>
