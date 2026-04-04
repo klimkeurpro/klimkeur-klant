@@ -115,11 +115,34 @@
   </div>
 </div>
 
+<!-- ============================================================
+     GEBRUIKER KIEZEN — wordt getoond na inloggen
+     ============================================================ -->
+<div class="auth-overlay" id="gebruikerOverlay" style="display:none">
+  <div class="auth-box" style="max-width:360px">
+    <div class="auth-logo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <path d="M9 12l2 2 4-4"/>
+      </svg>
+      <div>
+        <div class="auth-logo-title">KlimKeur</div>
+        <div class="auth-logo-sub" id="gebruikerBedrijfNaam">Mijn Materiaal</div>
+      </div>
+    </div>
+    <div class="auth-title">Wie ben je?</div>
+    <div class="auth-sub">Selecteer je naam om je eigen materiaal te bekijken</div>
+    <div id="gebruikerLijst" style="display:flex;flex-direction:column;gap:8px;margin-top:16px">
+      <!-- Wordt gevuld door ui.js -->
+    </div>
+  </div>
+</div>
+
 <!-- Toast meldingen -->
 <div id="toastBox"></div>
 
 <!-- ============================================================
-     HEADER
+     HEADER — met gebruiker-wisselaar
      ============================================================ -->
 <header class="header">
   <div class="header-logo">
@@ -132,268 +155,208 @@
       <div class="header-sub" id="headerSub">Mijn Materiaal</div>
     </div>
   </div>
-  <div class="header-welkom" id="headerWelkom"></div>
-  <button class="logout-btn" id="logoutBtn" onclick="uitloggen()">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-      <polyline points="16 17 21 12 16 7"/>
-      <line x1="21" y1="12" x2="9" y2="12"/>
-    </svg>
-    Uitloggen
-  </button>
+  <div style="display:flex;align-items:center;gap:10px">
+    <button class="gebruiker-switch-btn" id="gebruikerSwitchBtn" onclick="toonGebruikerKeuze()" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
+      </svg>
+      <span id="gebruikerNaamBtn">Iedereen</span>
+      <span style="opacity:0.7;font-size:11px">▼</span>
+    </button>
+    <button class="logout-btn" id="logoutBtn" onclick="uitloggen()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+        <polyline points="16 17 21 12 16 7"/>
+        <line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+      Uitloggen
+    </button>
+  </div>
 </header>
 
 <!-- ============================================================
-     TABS — 2 tabs
+     HOOFD PAGINA — één overzicht, geen tabs
      ============================================================ -->
-<div class="tabs">
-  <button class="tab-btn active" onclick="switchTab('materiaal',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-    </svg>
-    Mijn Materiaal
-    <span class="count-badge" id="artTeller">0</span>
-  </button>
-  <button class="tab-btn" onclick="switchTab('certificaten',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-      <polyline points="14 2 14 8 20 8"/>
-    </svg>
-    Certificaten
-  </button>
-</div>
+<div class="main fade-in" id="hoofdPagina">
 
-<!-- ============================================================
-     PAGINA: MIJN MATERIAAL
-     ============================================================ -->
-<div class="page active" id="page-materiaal">
-  <div class="main fade-in">
-
-    <!-- Statistieken -->
-    <div class="stats-row">
-      <div class="stat-box">
-        <div class="stat-nr" id="statTotaal">0</div>
-        <div class="stat-lbl">Artikelen</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-nr" id="statGoed" style="color:var(--green-light)">0</div>
-        <div class="stat-lbl">Goedgekeurd</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-nr" id="statKeuring" style="color:var(--warning)">0</div>
-        <div class="stat-lbl">Keuring nodig</div>
-      </div>
+  <!-- Statistieken — klikbaar als filter -->
+  <div class="stats-row" id="statsRow">
+    <div class="stat-box stat-clickable stat-active" id="statBoxTotaal" onclick="setStatFilter('alle')">
+      <div class="stat-nr" id="statTotaal">0</div>
+      <div class="stat-lbl">Artikelen</div>
     </div>
-
-    <!-- Artikel toevoegen — ingeklapt -->
-    <div class="card">
-      <div class="card-header" onclick="toggleToevoegForm()" style="cursor:pointer;user-select:none;">
-        <div class="card-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="12" y1="5" x2="12" y2="19"/>
-            <line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          Artikel toevoegen
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div class="status-badge load" id="statusBadge">Laden...</div>
-          <svg id="toevoegChev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" style="transition:transform 0.2s;transform:rotate(-90deg)">
-            <polyline points="6 9 12 15 18 9"/>
-          </svg>
-        </div>
-      </div>
-      <div id="toevoegForm" style="display:none;">
-        <div class="card-body">
-
-          <div class="form-group">
-            <label class="form-label">Omschrijving *</label>
-            <div class="ac-wrap">
-              <input class="form-input" id="fOmschr"
-                placeholder="Typ om te zoeken of voer zelf in..."
-                type="text" autocomplete="off" autocorrect="off" spellcheck="false"
-                oninput="acZoeken(this.value,'main')"
-                onkeydown="acKey(event,'main')"
-                onblur="setTimeout(()=>acSluit('main'),150)">
-              <div class="ac-dd" id="acDd"></div>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">
-                Merk <span class="opt">(automatisch bij herkenning)</span>
-              </label>
-              <input class="form-input" id="fMerk"
-                placeholder="Bijv. Petzl, Edelrid..." type="text" autocomplete="off"
-                oninput="acZoekenOpVeld('main')"
-                onblur="setTimeout(()=>acSluit('main'),150)">
-              <div class="merk-auto-label" id="merkLabel" style="display:none">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                  <polyline points="22 4 12 14.01 9 11.01"/>
-                </svg>
-                Automatisch ingevuld vanuit productdatabase
-              </div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">
-                Materiaal <span class="opt">(automatisch bij herkenning)</span>
-              </label>
-              <input class="form-input" id="fMateriaal"
-                placeholder="Bijv. Helm, Harnas, Klimgordel..." type="text" autocomplete="off"
-                oninput="acZoekenOpVeld('main')"
-                onblur="setTimeout(()=>acSluit('main'),150)">
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Serienummer <span class="opt">optioneel</span></label>
-              <div style="display:flex;gap:4px;"><input class="form-input" id="fSN" placeholder="bijv. SN12345678" type="text" autocomplete="off" style="font-family:monospace;flex:1;min-width:0;"><button type="button" class="btn" onclick="openScanner('fSN')" title="Scan" style="padding:6px 8px;flex-shrink:0;">📷</button></div>
-            </div>
-            <div class="form-group">
-              <label class="form-label">
-                Productiedatum <span class="opt">optioneel</span>
-              </label>
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-                <input class="form-input" id="fJaar"
-                  type="number" placeholder="Jaar" min="1980" max="2099"
-                  style="font-family:monospace">
-                <select class="form-input" id="fMaand">
-                  <option value="">Maand</option>
-                  <option value="01">Jan</option><option value="02">Feb</option>
-                  <option value="03">Mrt</option><option value="04">Apr</option>
-                  <option value="05">Mei</option><option value="06">Jun</option>
-                  <option value="07">Jul</option><option value="08">Aug</option>
-                  <option value="09">Sep</option><option value="10">Okt</option>
-                  <option value="11">Nov</option><option value="12">Dec</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">
-                In gebruik sinds <span class="opt">optioneel</span>
-              </label>
-              <input class="form-input" id="fInGebruik" type="date">
-            </div>
-            <div class="form-group">
-              <label class="form-label">
-                Gebruiker <span class="opt">optioneel</span>
-              </label>
-              <input class="form-input" id="fGebruiker"
-                placeholder="Naam of functie..." type="text" autocomplete="off">
-            </div>
-          </div>
-
-          <div class="form-group" style="margin-bottom:0">
-            <label class="form-label">
-              Opmerking <span class="opt">optioneel</span>
-            </label>
-            <input class="form-input" id="fOpmerking"
-              placeholder="bijv. kleur rood, recall gecontroleerd..." type="text">
-          </div>
-
-          <button class="btn btn-primary" style="margin-top:16px"
-            onclick="voegToe()" id="toevoegBtn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <line x1="12" y1="5" x2="12" y2="19"/>
-              <line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-            Toevoegen
-          </button>
-
-        </div>
-      </div>
+    <div class="stat-box stat-clickable" id="statBoxGoed" onclick="setStatFilter('goedgekeurd')">
+      <div class="stat-nr" id="statGoed" style="color:var(--green-light)">0</div>
+      <div class="stat-lbl">Goedgekeurd</div>
     </div>
-
-    <!-- Artikellijst -->
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="8" y1="6" x2="21" y2="6"/>
-            <line x1="8" y1="12" x2="21" y2="12"/>
-            <line x1="8" y1="18" x2="21" y2="18"/>
-            <line x1="3" y1="6" x2="3.01" y2="6"/>
-            <line x1="3" y1="12" x2="3.01" y2="12"/>
-            <line x1="3" y1="18" x2="3.01" y2="18"/>
-          </svg>
-          Mijn artikelen
-        </div>
-      </div>
-      <div class="card-body" style="padding:12px 16px 0">         <div style="position:relative;margin-bottom:10px;">           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--text-muted);pointer-events:none;"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>           <input type="text" id="artZoekInput" placeholder="Zoek op omschrijving, merk, serienummer..." oninput="zoekArtikelen(this.value)" style="width:100%;padding:8px 12px 8px 34px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;background:#fff;color:var(--text);">         </div>       </div>       <div class="card-body" id="artLijst" style="padding:0 16px 12px">
-        <div class="empty-state">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-          </svg>
-          <h3>Nog geen artikelen</h3>
-          <p>Klik op "Artikel toevoegen" hierboven om te beginnen.</p>
-        </div>
-      </div>
+    <div class="stat-box stat-clickable" id="statBoxKeuring" onclick="setStatFilter('keuring')">
+      <div class="stat-nr" id="statKeuring" style="color:var(--warning)">0</div>
+      <div class="stat-lbl">Keuring nodig</div>
     </div>
-
-    <div class="info-banner" style="margin-bottom:0">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-        <polyline points="22 4 12 14.01 9 11.01"/>
-      </svg>
-      Je materiaal wordt automatisch opgeslagen en is zichtbaar voor je keurmeester.
-    </div>
-
   </div>
+
+  <!-- Zoekbalk + PDF knop -->
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+    <div style="position:relative;flex:1">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        style="position:absolute;left:10px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--text-muted);pointer-events:none;">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input type="text" id="artZoekInput"
+        placeholder="Zoek artikel..."
+        oninput="zoekArtikelen(this.value)"
+        style="width:100%;padding:8px 12px 8px 34px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;background:#fff;color:var(--text);box-sizing:border-box">
+    </div>
+    <button onclick="downloadCertPDF()" class="btn" style="white-space:nowrap;padding:8px 12px;font-size:13px" title="Materiaaloverzicht downloaden als PDF">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="7 10 12 15 17 10"/>
+        <line x1="12" y1="15" x2="12" y2="3"/>
+      </svg>
+      PDF
+    </button>
+  </div>
+
+  <!-- Artikellijst als kaartjes -->
+  <div id="artLijst">
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+      </svg>
+      <h3>Nog geen artikelen</h3>
+      <p>Voeg je eerste artikel toe via de knop hieronder.</p>
+    </div>
+  </div>
+
+  <!-- Afgevoerde artikelen toggle -->
+  <div id="afgevoerdToggle" style="display:none;text-align:center;margin:12px 0">
+    <button onclick="toggleAfgevoerd()" id="afgevoerdBtn"
+      style="background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer;text-decoration:underline">
+    </button>
+  </div>
+
+  <!-- Toevoeg-knop vast onderaan -->
+  <div style="margin-top:16px">
+    <button class="btn btn-primary" style="width:100%;padding:12px;font-size:14px"
+      onclick="toggleToevoegForm()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      Artikel toevoegen
+    </button>
+  </div>
+
+  <!-- Info banner -->
+  <div class="info-banner" style="margin-top:12px;margin-bottom:0">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+      <polyline points="22 4 12 14.01 9 11.01"/>
+    </svg>
+    Je materiaal wordt automatisch opgeslagen en is zichtbaar voor je keurmeester.
+  </div>
+
 </div>
 
 <!-- ============================================================
-     PAGINA: CERTIFICATEN + HISTORIE (gecombineerd)
+     MODAL: Artikel toevoegen (overlay i.p.v. ingeklapt)
      ============================================================ -->
-<div class="page" id="page-certificaten">
-  <div class="main fade-in">
+<div class="modal-overlay" id="toevoegModal" onclick="if(event.target===this)sluitToevoegModal()">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-title">Artikel toevoegen</div>
 
-    <div id="certLeeg">
-      <div class="card">
-        <div class="card-body">
-          <div class="empty-state">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-            </svg>
-            <h3>Geen certificaten beschikbaar</h3>
-            <p>Na je eerste keuring verschijnen je certificaten hier automatisch.</p>
-          </div>
+    <div class="form-group">
+      <label class="form-label">Omschrijving *</label>
+      <div class="ac-wrap">
+        <input class="form-input" id="fOmschr"
+          placeholder="Typ om te zoeken of voer zelf in..."
+          type="text" autocomplete="off" autocorrect="off" spellcheck="false"
+          oninput="acZoeken(this.value,'main')"
+          onkeydown="acKey(event,'main')"
+          onblur="setTimeout(()=>acSluit('main'),150)">
+        <div class="ac-dd" id="acDd"></div>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Merk <span class="opt">(automatisch)</span></label>
+        <input class="form-input" id="fMerk"
+          placeholder="Bijv. Petzl, Edelrid..." type="text" autocomplete="off"
+          oninput="acZoekenOpVeld('main')"
+          onblur="setTimeout(()=>acSluit('main'),150)">
+        <div class="merk-auto-label" id="merkLabel" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+            <polyline points="22 4 12 14.01 9 11.01"/>
+          </svg>
+          Automatisch ingevuld
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Materiaal <span class="opt">(automatisch)</span></label>
+        <input class="form-input" id="fMateriaal"
+          placeholder="Bijv. Helm, Harnas..." type="text" autocomplete="off"
+          oninput="acZoekenOpVeld('main')"
+          onblur="setTimeout(()=>acSluit('main'),150)">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Serienummer <span class="opt">optioneel</span></label>
+        <div style="display:flex;gap:4px;">
+          <input class="form-input" id="fSN" placeholder="bijv. SN12345678" type="text" autocomplete="off" style="font-family:monospace;flex:1;min-width:0;">
+          <button type="button" class="btn" onclick="openScanner('fSN')" title="Scan" style="padding:6px 8px;flex-shrink:0;">📷</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Productiedatum <span class="opt">optioneel</span></label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <input class="form-input" id="fJaar" type="number" placeholder="Jaar" min="1980" max="2099" style="font-family:monospace">
+          <select class="form-input" id="fMaand">
+            <option value="">Maand</option>
+            <option value="01">Jan</option><option value="02">Feb</option>
+            <option value="03">Mrt</option><option value="04">Apr</option>
+            <option value="05">Mei</option><option value="06">Jun</option>
+            <option value="07">Jul</option><option value="08">Aug</option>
+            <option value="09">Sep</option><option value="10">Okt</option>
+            <option value="11">Nov</option><option value="12">Dec</option>
+          </select>
         </div>
       </div>
     </div>
 
-    <div id="certView" style="display:none">
-
-      <div class="cert-header" id="certInfo"></div>
-      <div class="stats-row" id="certStats"></div>
-      <div id="certFilter" style="display:none">
-        <div class="filter-row" id="certFilterBtns"></div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">In gebruik sinds <span class="opt">optioneel</span></label>
+        <input class="form-input" id="fInGebruik" type="date">
       </div>
-      <div id="certItems"></div>
-
-      <div id="historieView" style="margin-top:24px;display:none">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
-          <h3 style="font-size:15px;font-weight:600;margin:0">Eerdere keuringen</h3>
-          <div class="zoek-wrap" style="flex:1;max-width:320px;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"/>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input class="zoek-input" id="histZoek"
-              placeholder="Zoek in historie..."
-              oninput="filterHist()">
-          </div>
-        </div>
-        <div id="histLijst"></div>
+      <div class="form-group">
+        <label class="form-label">Gebruiker <span class="opt">optioneel</span></label>
+        <input class="form-input" id="fGebruiker"
+          placeholder="Naam of functie..." type="text" autocomplete="off">
       </div>
-
     </div>
 
+    <div class="form-group" style="margin-bottom:0">
+      <label class="form-label">Opmerking <span class="opt">optioneel</span></label>
+      <input class="form-input" id="fOpmerking"
+        placeholder="bijv. kleur rood, recall gecontroleerd..." type="text">
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="sluitToevoegModal()">Annuleren</button>
+      <button class="btn btn-primary" style="width:auto;flex:1" onclick="voegToe()" id="toevoegBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Toevoegen
+      </button>
+    </div>
   </div>
 </div>
 
@@ -405,7 +368,6 @@
     <div class="modal-title">Artikel bewerken</div>
     <input type="hidden" id="editIdx">
 
-    <!-- Melding als artikel gekoppeld is aan keuring — alleen gebruiker bewerkbaar -->
     <div id="editGekoppeldMelding" style="display:none;margin-bottom:12px;padding:10px 14px;background:rgba(91,154,47,0.08);border:1px solid var(--green);border-radius:8px;font-size:13px;color:var(--text-secondary);">
       Dit artikel is gekoppeld aan een keuring. Alleen de <strong>gebruiker</strong> kan worden aangepast.
     </div>
@@ -446,14 +408,15 @@
     <div class="form-row">
       <div class="form-group">
         <label class="form-label">Serienummer</label>
-        <div style="display:flex;gap:4px;"><input class="form-input" id="eSN" type="text" style="font-family:monospace;flex:1;min-width:0;" autocomplete="off"><button type="button" class="btn btn-primary" onclick="openScanner('eSN')" title="Scan barcode/DataMatrix" style="padding:6px 10px;flex-shrink:0;white-space:nowrap;width:auto;">📷</button></div>
+        <div style="display:flex;gap:4px;">
+          <input class="form-input" id="eSN" type="text" style="font-family:monospace;flex:1;min-width:0;" autocomplete="off">
+          <button type="button" class="btn btn-primary" onclick="openScanner('eSN')" title="Scan" style="padding:6px 10px;flex-shrink:0;">📷</button>
+        </div>
       </div>
       <div class="form-group">
         <label class="form-label">Productiedatum</label>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
-          <input class="form-input" id="eJaar"
-            type="number" placeholder="Jaar" min="1980" max="2099"
-            style="font-family:monospace">
+          <input class="form-input" id="eJaar" type="number" placeholder="Jaar" min="1980" max="2099" style="font-family:monospace">
           <select class="form-input" id="eMaand">
             <option value="">Maand</option>
             <option value="01">Jan</option><option value="02">Feb</option>
@@ -486,6 +449,33 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="sluitModal()">Annuleren</button>
       <button class="btn btn-primary" style="width:auto;flex:1" onclick="slaEditOp()">Opslaan</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: Artikel historie + opmerking
+     ============================================================ -->
+<div class="modal-overlay" id="historieModal" onclick="if(event.target===this)sluitHistorieModal()">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-title" id="historieTitel">Keuringshistorie</div>
+    <div id="historieInhoud">
+      <div style="text-align:center;padding:24px;color:var(--text-muted)">Laden...</div>
+    </div>
+    <div style="border-top:1px solid var(--border);margin-top:16px;padding-top:12px">
+      <label class="form-label">Opmerking toevoegen</label>
+      <div style="display:flex;gap:8px">
+        <input class="form-input" id="historieOpmerking" type="text"
+          placeholder="bijv. betrokken bij val, gestolen..."
+          maxlength="200" style="flex:1">
+        <button class="btn btn-primary" onclick="slaHistorieOpmerkingOp()" style="white-space:nowrap;width:auto">
+          Opslaan
+        </button>
+      </div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Max 200 tekens — zichtbaar voor je keurmeester</div>
+    </div>
+    <div class="modal-footer" style="margin-top:12px">
+      <button class="btn btn-secondary" onclick="sluitHistorieModal()">Sluiten</button>
     </div>
   </div>
 </div>
