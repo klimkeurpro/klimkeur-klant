@@ -94,6 +94,13 @@ async function verwerkInlog(user) {
   await laadArtikelen();
   console.log('laadKeuringen...');
   await laadKeuringen();
+
+  // ── GEBRUIKER KEUZESCHERM ─────────────────────────────────
+  // Toon "Wie ben je?" of laad opgeslagen keuze.
+  // Moet NA laadArtikelen zodat de gebruikersnamen beschikbaar zijn.
+  // ──────────────────────────────────────────────────────────
+  laadOpgeslagenGebruiker();
+
   console.log('ALLES GELADEN');
 }
 
@@ -129,6 +136,10 @@ function verwerkUitlog() {
 
   const bevestiging = document.getElementById('wwVergetenBevestiging');
   if (bevestiging) bevestiging.style.display = 'none';
+
+  // Gebruiker-keuze resetten
+  const gebruikerBtn = document.getElementById('gebruikerSwitchBtn');
+  if (gebruikerBtn) gebruikerBtn.style.display = 'none';
 }
 
 function toonFoutScherm(bericht) {
