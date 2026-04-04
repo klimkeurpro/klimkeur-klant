@@ -108,7 +108,7 @@ function kiesGebruiker(naam) {
   // Update knop in header
   const btn = el('gebruikerSwitchBtn');
   const naamSpan = el('gebruikerNaamBtn');
-  if (btn) btn.style.display = 'flex';
+  if (btn) btn.style.cssText = 'display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:5px 12px;border-radius:20px;cursor:pointer;font-size:13px;';
   if (naamSpan) naamSpan.textContent = naam || 'Iedereen';
 
   // Auto-fill gebruiker bij toevoegen
@@ -351,7 +351,16 @@ function renderArtikelen() {
   _updateAfgevoerdToggle(afgevoerd.length);
 
   // Highlight actief stat-blokje
-  setStatFilter(_statFilter);
+  (NIET setStatFilter aanroepen — dat veroorzaakt een lus)
+  ['statBoxTotaal', 'statBoxGoed', 'statBoxKeuring'].forEach(id => {
+    const box = el(id);
+    if (box) box.style.outline = 'none';
+  });
+  const _activeId = _statFilter === 'goedgekeurd' ? 'statBoxGoed'
+                  : _statFilter === 'keuring'     ? 'statBoxKeuring'
+                  : 'statBoxTotaal';
+  const _activeBox = el(_activeId);
+  if (_activeBox) _activeBox.style.outline = '2px solid var(--green)';
 }
 
 function _keuringDatumVoorArtikel(art) {
