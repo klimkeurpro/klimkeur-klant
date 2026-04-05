@@ -351,7 +351,7 @@ function renderArtikelen() {
   _updateAfgevoerdToggle(afgevoerd.length);
 
   // Highlight actief stat-blokje
-  (NIET setStatFilter aanroepen — dat veroorzaakt een lus)
+  // (NIET setStatFilter aanroepen — dat veroorzaakt een lus)
   ['statBoxTotaal', 'statBoxGoed', 'statBoxKeuring'].forEach(id => {
     const box = el(id);
     if (box) box.style.outline = 'none';
