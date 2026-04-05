@@ -169,25 +169,55 @@ function setStatFilter(filter) {
 // ============================================================
 function getUniekeArtikelenLijst() {
   const groepen = {};
+
+  // Groepeer alle rijen op itemId (persistent artikel-ID)
   _artikelen.forEach(a => {
-    const key = a.itemId || a.id;  // fallback voor oude data
-    if (!groepen[key]) {
-      groepen[key] = a;
-    } else {
-      // Bewaar de meest recente versie
-      const bestaand = groepen[key];
-      const bestaandDatum = bestaand.keuringId
-        ? (_keuringen.find(k => k.id === bestaand.keuringId)?.datum || '')
-        : bestaand.toegevoegd || '';
-      const nieuwDatum = a.keuringId
-        ? (_keuringen.find(k => k.id === a.keuringId)?.datum || '')
-        : a.toegevoegd || '';
-      if (nieuwDatum > bestaandDatum) {
-        groepen[key] = a;
-      }
-    }
+    const key = a.itemId || a.id;
+    if (!groepen[key]) groepen[key] = [];
+    groepen[key].push(a);
   });
-  return Object.values(groepen);
+
+  // Voor elke groep: bepaal effectieve status en keuringsdatum
+  return Object.values(groepen).map(rijen => {
+    // Sorteer op datum (nieuwste eerst)
+    const gesorteerd = [...rijen].sort((a, b) => {
+      const da = a.keuringId ? (_keuringen.find(k => k.id === a.keuringId)?.datum || '') : (a.toegevoegd || '');
+      const db = b.keuringId ? (_keuringen.find(k => k.id === b.keuringId)?.datum || '') : (b.toegevoegd || '');
+      return (db || '').localeCompare(da || '');
+    });
+
+    const basis = gesorteerd[0];
+
+    // Laatste echte beoordeling — 'nieuw' telt niet als beoordeling
+    const laatsteBeoordeling = gesorteerd.find(r =>
+      r.status === 'goedgekeurd' || r.status === 'afgekeurd'
+    );
+
+    // Laatste goedkeuring — bepaalt de 12-maanden teller
+    const laatsteGoedkeuring = gesorteerd.find(r => r.status === 'goedgekeurd');
+
+    // Bepaal effectieve status
+    let effectieveStatus = '';
+    if (laatsteBeoordeling) {
+      effectieveStatus = laatsteBeoordeling.status;
+    } else if (basis.inGebruik) {
+      // Nog nooit gekeurd, maar wel ingebruikname datum
+      const maanden = (Date.now() - new Date(basis.inGebruik + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24 * 30.44);
+      if (maanden < 12) effectieveStatus = 'nieuw';
+    }
+
+    // Bepaal effectieve keuringsdatum (voor de 12-mnd teller)
+    let effectieveKeuringDatum = null;
+    if (laatsteGoedkeuring && laatsteGoedkeuring.keuringId) {
+      effectieveKeuringDatum = _keuringen.find(k => k.id === laatsteGoedkeuring.keuringId)?.datum || null;
+    }
+
+    return {
+      ...basis,
+      _effectieveStatus:       effectieveStatus,
+      _effectieveKeuringDatum: effectieveKeuringDatum,
+    };
+  });
 }
 
 // ============================================================
@@ -215,10 +245,10 @@ function renderArtikelen() {
 
   // ── Statistieken berekenen (na gebruikersfilter) ──────────
   const totaal = gefilterdOpGebruiker.length;
-  const goed   = gefilterdOpGebruiker.filter(a => a.status === 'goedgekeurd').length;
+  const goed   = gefilterdOpGebruiker.filter(a => a._effectieveStatus === 'goedgekeurd').length;
   const nodig  = gefilterdOpGebruiker.filter(a => {
-    const kd = _keuringDatumVoorArtikel(a);
-    const ks = keuringStatus(a.inGebruik, kd);
+    if (a._effectieveStatus === 'afgekeurd') return false;
+    const ks = keuringStatus(a.inGebruik, a._effectieveKeuringDatum);
     return ks === 'overdue' || ks === 'soon';
   }).length;
 
@@ -229,12 +259,12 @@ function renderArtikelen() {
   // ── Stat-filter toepassen ─────────────────────────────────
   let teTonenLijst = _toonAfgevoerd ? afgevoerd : gefilterdOpGebruiker;
 
-  if (_statFilter === 'goedgekeurd') {
-    teTonenLijst = teTonenLijst.filter(a => a.status === 'goedgekeurd');
+ if (_statFilter === 'goedgekeurd') {
+    teTonenLijst = teTonenLijst.filter(a => a._effectieveStatus === 'goedgekeurd');
   } else if (_statFilter === 'keuring') {
     teTonenLijst = teTonenLijst.filter(a => {
-      const kd = _keuringDatumVoorArtikel(a);
-      const ks = keuringStatus(a.inGebruik, kd);
+      if (a._effectieveStatus === 'afgekeurd') return false;
+      const ks = keuringStatus(a.inGebruik, a._effectieveKeuringDatum);
       return ks === 'overdue' || ks === 'soon';
     });
   }
@@ -284,19 +314,19 @@ function renderArtikelen() {
 
   // ── Kaartjes renderen ─────────────────────────────────────
   lijst.innerHTML = gesorteerd.map(art => {
-    const idx = _artikelen.indexOf(art);
-    const kd  = _keuringDatumVoorArtikel(art);
-    const ks  = keuringStatus(art.inGebruik, kd);
-    const kt  = keuringTekst(ks, art.inGebruik, kd);
+   const idx = _artikelen.indexOf(art);
+    const kd  = art._effectieveKeuringDatum;
+    const ks  = art._effectieveStatus === 'afgekeurd' ? null : keuringStatus(art.inGebruik, kd);
+    const kt  = ks ? keuringTekst(ks, art.inGebruik, kd) : null;
 
-    // Status badge
+    // Status badge — op basis van effectieve status
     let statusHtml = '';
-    if (art.status === 'goedgekeurd') {
+    if (art._effectieveStatus === 'goedgekeurd') {
       statusHtml = '<span style="background:#EAF3DE;color:#3B6D11;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500;white-space:nowrap">Goed</span>';
-    } else if (art.status === 'afgekeurd') {
+    } else if (art._effectieveStatus === 'afgekeurd') {
       statusHtml = '<span style="background:#FCEBEB;color:#A32D2D;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500;white-space:nowrap">Afgekeurd</span>';
-    } else if (art.status === 'nieuw') {
-      statusHtml = '<span style="background:#E6F1FB;color:#185FA5;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500;white-space:nowrap">Aangemeld</span>';
+    } else if (art._effectieveStatus === 'nieuw') {
+      statusHtml = '<span style="background:#E6F1FB;color:#185FA5;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500;white-space:nowrap">Nieuw</span>';
     }
 
     // Keuring regel
