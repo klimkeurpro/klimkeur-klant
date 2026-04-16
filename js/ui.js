@@ -223,6 +223,62 @@ function getUniekeArtikelenLijst() {
 // ============================================================
 // ARTIKELEN RENDEREN — kaartjes voor mobiel
 // ============================================================
+
+// Vindt de index in _artikelen van de representatieve rij voor een itemId.
+// _artikelen bevat meerdere rijen per uniek artikel (één per keuring).
+// Voor bewerken/afvoeren hebben we de MEEST RECENTE rij nodig — dat is
+// dezelfde rij die getUniekeArtikelenLijst() als basis pakt.
+function _vindArtikelIndexOpItemId(itemId) {
+  if (!itemId) return -1;
+  let besteIdx = -1;
+  let besteDatum = '';
+  for (let i = 0; i < _artikelen.length; i++) {
+    const a = _artikelen[i];
+    const key = a.itemId || a.id;
+    if (key !== itemId) continue;
+    const datum = a.keuringId
+      ? (_keuringen.find(k => k.id === a.keuringId)?.datum || '')
+      : (a.toegevoegd || '');
+    if (datum >= besteDatum) {
+      besteDatum = datum;
+      besteIdx = i;
+    }
+  }
+  return besteIdx;
+}
+
+// Eén delegated click-listener op #artLijst. Elke kaart en elke actieknop
+// draagt een data-action attribuut; closest() kiest het specifiekste.
+// Zo is er geen stopPropagation-dans meer nodig en kan de DOM vrij
+// vervangen worden door innerHTML zonder listeners te verliezen.
+function _artLijstClickHandler(event) {
+  const target = event.target.closest('[data-action]');
+  if (!target) return;
+  const action = target.dataset.action;
+  const itemId = target.dataset.itemId;
+  if (!itemId) return;
+
+  if (action === 'historie')      openHistorie(itemId);
+  else if (action === 'edit')     openEdit(itemId);
+  else if (action === 'afvoer')   openAfvoerDialog(itemId);
+}
+
+// Registreer de listener één keer, zodra #artLijst bestaat.
+(function _initArtLijstDelegation() {
+  const bind = () => {
+    const lijst = document.getElementById('artLijst');
+    if (lijst && !lijst.dataset.delegationBound) {
+      lijst.addEventListener('click', _artLijstClickHandler);
+      lijst.dataset.delegationBound = '1';
+    }
+  };
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', bind);
+  } else {
+    bind();
+  }
+})();
+
 function zoekArtikelen(waarde) {
   _artZoek = waarde.toLowerCase().trim();
   renderArtikelen();
@@ -313,8 +369,13 @@ function renderArtikelen() {
   }
 
   // ── Kaartjes renderen ─────────────────────────────────────
+  // Identity via itemId, NIET via array-index. _artikelen bevat meerdere
+  // rijen per uniek artikel (één per keuring); indexOf op een object uit
+  // getUniekeArtikelenLijst() geeft altijd -1 omdat dat een nieuw object
+  // is (spread-copy). Acties worden via event-delegation op #artLijst
+  // afgehandeld — zie _artLijstClickHandler.
   lijst.innerHTML = gesorteerd.map(art => {
-   const idx = _artikelen.indexOf(art);
+    const itemId = art.itemId || art.id || '';
     const kd  = art._effectieveKeuringDatum;
     const ks  = art._effectieveStatus === 'afgekeurd' ? null : keuringStatus(art.inGebruik, kd);
     const kt  = ks ? keuringTekst(ks, art.inGebruik, kd) : null;
@@ -356,8 +417,14 @@ function renderArtikelen() {
 
     const opacity = art.afgevoerd ? 'opacity:0.5;' : '';
 
-    return `<div style="background:var(--bg-card,#fff);border:1px solid var(--border,#e0e0e0);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;${opacity}"
-      onclick="openHistorie('${(art.itemId || '').toString().replace(/'/g, "\\'")}')">
+    // Card + knoppen zijn puur declaratief: data-action + data-item-id.
+    // De enige click-listener zit op #artLijst (event-delegation) en
+    // routeert op basis van closest('[data-action]'). Knopklikken hoeven
+    // dus niet stopPropagation te doen — delegatie kiest het specifiekste
+    // data-action element, niet de card eromheen.
+    const itemIdAttr = esc(itemId);
+    return `<div class="art-card" data-action="historie" data-item-id="${itemIdAttr}"
+      style="background:var(--bg-card,#fff);border:1px solid var(--border,#e0e0e0);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;${opacity}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
         <div style="flex:1;min-width:0">
           <div style="font-size:14px;font-weight:500;color:var(--text,#333)">${esc(art.omschrijving)}</div>
@@ -368,11 +435,11 @@ function renderArtikelen() {
       </div>
       ${keuringHtml}
       ${opmHtml}
-      <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end" onclick="event.stopPropagation()">
+      <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end">
         ${art.afgevoerd
           ? '<span style="font-size:11px;color:var(--text-muted);font-style:italic">Afgevoerd</span>'
-          : `<button onclick="openEdit(${idx})" style="background:none;border:1px solid var(--border,#ddd);padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;color:var(--text-secondary,#666)">Bewerken</button>
-             <button onclick="openAfvoerDialog(${idx})" style="background:rgba(243,156,18,0.1);border:1px solid var(--warning,#e67e22);padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;color:var(--warning,#e67e22)">Afvoeren</button>`
+          : `<button type="button" data-action="edit" data-item-id="${itemIdAttr}" style="background:none;border:1px solid var(--border,#ddd);padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;color:var(--text-secondary,#666)">Bewerken</button>
+             <button type="button" data-action="afvoer" data-item-id="${itemIdAttr}" style="background:rgba(243,156,18,0.1);border:1px solid var(--warning,#e67e22);padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;color:var(--warning,#e67e22)">Afvoeren</button>`
         }
       </div>
     </div>`;
@@ -513,11 +580,15 @@ async function voegToe() {
 // ============================================================
 // ARTIKEL BEWERKEN
 // ============================================================
-function openEdit(idx) {
+function openEdit(itemId) {
+  const idx = _vindArtikelIndexOpItemId(itemId);
   const a = _artikelen[idx];
   if (!a) return;
 
-  el('editIdx').value    = idx;
+  // We bewaren itemId — NIET de array-index — in het formulier. Zo blijft
+  // de referentie stabiel als _artikelen tussendoor muteert (nieuwe rij
+  // via keuring, afvoer, herlaad vanuit DB).
+  el('editItemId').value = itemId;
   el('eOmschr').value    = a.omschrijving || '';
   el('eMerk').value      = a.merk || '';
   el('eMerk').className  = 'form-input';
@@ -556,14 +627,17 @@ function sluitModal() {
 }
 
 async function slaEditOp() {
-  const idx    = parseInt(el('editIdx').value);
+  const itemId = el('editItemId').value;
+  const idx    = _vindArtikelIndexOpItemId(itemId);
   const omschr = el('eOmschr').value.trim();
   const sn     = el('eSN').value.trim();
   if (!omschr) { toast('Omschrijving is verplicht', 'error'); return; }
 
+  const a = _artikelen[idx];
+  if (!a) { toast('Artikel niet gevonden', 'error'); return; }
+
   const jaar      = el('eJaar').value.trim();
   const maand     = el('eMaand').value;
-  const a         = _artikelen[idx];
   const gekoppeld = !!a.keuringId;
   const opmerking = el('eOpmerking').value.trim();
 
@@ -592,13 +666,17 @@ async function slaEditOp() {
 // ============================================================
 // AFVOER DIALOG
 // ============================================================
-function openAfvoerDialog(idx) {
+function openAfvoerDialog(itemId) {
+  const idx = _vindArtikelIndexOpItemId(itemId);
   const art = _artikelen[idx];
   if (!art) return;
 
   const overlay = document.createElement('div');
   overlay.id = 'afvoerOverlay';
   overlay.className = 'modal-overlay active';
+  // itemId is veilig als attribuut (UUID-achtig); toch escapen we het voor
+  // de inline onclick om geen enkele ruimte te laten voor quote-injectie.
+  const itemIdJs = itemId.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   overlay.innerHTML = `
     <div class="modal">
       <div class="modal-title">Artikel afvoeren</div>
@@ -618,13 +696,14 @@ function openAfvoerDialog(idx) {
       </div>
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="document.getElementById('afvoerOverlay').remove()">Annuleren</button>
-        <button class="btn" style="background:var(--warning);color:#fff;width:auto;flex:1" onclick="bevestigAfvoer(${idx})">Afvoeren</button>
+        <button class="btn" style="background:var(--warning);color:#fff;width:auto;flex:1" onclick="bevestigAfvoer('${itemIdJs}')">Afvoeren</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
 }
 
-async function bevestigAfvoer(idx) {
+async function bevestigAfvoer(itemId) {
+  const idx    = _vindArtikelIndexOpItemId(itemId);
   const art    = _artikelen[idx];
   const reden  = document.getElementById('afvoerReden')?.value || 'Afgevoerd';
   const overlay = document.getElementById('afvoerOverlay');
