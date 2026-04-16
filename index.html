@@ -219,26 +219,8 @@
     </button>
   </div>
 
-  <!-- Artikellijst als kaartjes -->
-  <div id="artLijst">
-    <div class="empty-state">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-      </svg>
-      <h3>Nog geen artikelen</h3>
-      <p>Voeg je eerste artikel toe via de knop hieronder.</p>
-    </div>
-  </div>
-
-  <!-- Afgevoerde artikelen toggle -->
-  <div id="afgevoerdToggle" style="display:none;text-align:center;margin:12px 0">
-    <button onclick="toggleAfgevoerd()" id="afgevoerdBtn"
-      style="background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer;text-decoration:underline">
-    </button>
-  </div>
-
-  <!-- Toevoeg-knop vast onderaan -->
-  <div style="margin-top:16px">
+  <!-- Toevoeg-knop — boven de lijst, eerste actie onder de zoekbalk -->
+  <div style="margin-bottom:12px">
     <button class="btn btn-primary" style="width:100%;padding:12px;font-size:14px"
       onclick="toggleToevoegForm()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="16" height="16">
@@ -246,6 +228,24 @@
         <line x1="5" y1="12" x2="19" y2="12"/>
       </svg>
       Artikel toevoegen
+    </button>
+  </div>
+
+  <!-- Artikellijst als kaartjes -->
+  <div id="artLijst">
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+      </svg>
+      <h3>Nog geen artikelen</h3>
+      <p>Voeg je eerste artikel toe via de knop hierboven.</p>
+    </div>
+  </div>
+
+  <!-- Afgevoerde artikelen toggle -->
+  <div id="afgevoerdToggle" style="display:none;text-align:center;margin:12px 0">
+    <button onclick="toggleAfgevoerd()" id="afgevoerdBtn"
+      style="background:none;border:none;color:var(--text-muted);font-size:12px;cursor:pointer;text-decoration:underline">
     </button>
   </div>
 
@@ -366,7 +366,7 @@
 <div class="modal-overlay" id="editModal" onclick="if(event.target===this)sluitModal()">
   <div class="modal">
     <div class="modal-title">Artikel bewerken</div>
-    <input type="hidden" id="editIdx">
+    <input type="hidden" id="editItemId">
 
     <div id="editGekoppeldMelding" style="display:none;margin-bottom:12px;padding:10px 14px;background:rgba(91,154,47,0.08);border:1px solid var(--green);border-radius:8px;font-size:13px;color:var(--text-secondary);">
       Dit artikel is gekoppeld aan een keuring. Alleen de <strong>gebruiker</strong> kan worden aangepast.
