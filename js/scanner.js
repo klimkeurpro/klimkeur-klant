@@ -141,20 +141,30 @@ function _initCameraControls() {
     return;
   }
 
-  // ── Debug: toon wat de camera ondersteunt ────────────────────
-  // TODO: verwijder dit blok na testen
-  const debugInfo = [
-    caps.focusMode   ? 'focus:' + caps.focusMode.join(',') : 'focus:✗',
-    caps.focusDistance ? 'dist:' + caps.focusDistance.min + '-' + caps.focusDistance.max : 'dist:✗',
-    caps.zoom         ? 'zoom:' + caps.zoom.min + '-' + caps.zoom.max : 'zoom:✗',
-    caps.torch !== undefined ? 'torch:✓' : 'torch:✗',
-  ].join(' | ');
+  // ── Easter egg: 5× tappen op resultaatveld toont camera-capabilities ──
+  // Handig voor support: "tik 5 keer onderaan in de scanner en stuur een screenshot"
   if (resultEl) {
-    resultEl.style.color = 'rgba(255,255,255,.5)';
-    resultEl.style.fontSize = '11px';
-    resultEl.textContent = debugInfo;
+    const debugInfo = [
+      caps.focusMode    ? 'focus:' + caps.focusMode.join(',') : 'focus:✗',
+      caps.focusDistance ? 'dist:' + caps.focusDistance.min + '-' + caps.focusDistance.max : 'dist:✗',
+      caps.zoom          ? 'zoom:' + caps.zoom.min + '-' + caps.zoom.max : 'zoom:✗',
+      caps.torch !== undefined ? 'torch:✓' : 'torch:✗',
+    ].join(' | ');
+
+    let _debugTaps = 0;
+    let _debugTimer = null;
+    resultEl.addEventListener('click', () => {
+      _debugTaps++;
+      clearTimeout(_debugTimer);
+      _debugTimer = setTimeout(() => { _debugTaps = 0; }, 1500);
+      if (_debugTaps >= 5) {
+        resultEl.style.color = 'rgba(255,255,255,.5)';
+        resultEl.style.fontSize = '11px';
+        resultEl.textContent = debugInfo;
+        _debugTaps = 0;
+      }
+    });
   }
-  // ── Einde debug ─────────────────────────────────────────────
 
   const controlsEl = document.getElementById('scannerControls');
   if (!controlsEl) return;
