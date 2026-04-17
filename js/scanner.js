@@ -34,6 +34,7 @@ function openScanner(doelVeldId) {
   const overlay = document.createElement('div');
   overlay.id = 'scannerOverlay';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;';
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) sluitScanner(); });
 
   overlay.innerHTML = `
     <div style="color:#fff;text-align:center;margin-bottom:16px;">
@@ -78,6 +79,11 @@ function openScanner(doelVeldId) {
     ">Sluiten</button>
   `;
 
+  // Klik op de donkere achtergrond = sluiten
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) sluitScanner();
+  });
+
   document.body.appendChild(overlay);
 
   // Start de scanner
@@ -109,6 +115,9 @@ function openScanner(doelVeldId) {
     _initCameraControls();
   }).catch(err => {
     console.error('Scanner starten mislukt:', err);
+    // Verberg het reader-element zodat het geen clicks blokkeert
+    const readerEl = document.getElementById('scannerReader');
+    if (readerEl) readerEl.style.display = 'none';
     const resultEl = document.getElementById('scannerResultaat');
     if (resultEl) {
       resultEl.style.color = '#E74C3C';
@@ -119,51 +128,16 @@ function openScanner(doelVeldId) {
 
 // ============================================================
 // CAMERA CONTROLS — focus, zoom, torch
-//
-// Wordt aangeroepen nadat de camera succesvol gestart is.
-// Leest de capabilities uit en toont alleen knoppen/sliders
-// voor features die de camera daadwerkelijk ondersteunt.
 // ============================================================
 function _initCameraControls() {
   if (!_html5QrCode) return;
-
-  const resultEl = document.getElementById('scannerResultaat');
 
   let caps;
   try {
     caps = _html5QrCode.getRunningTrackCapabilities();
   } catch (e) {
     console.warn('Camera capabilities niet beschikbaar:', e);
-    if (resultEl) {
-      resultEl.style.color = '#E74C3C';
-      resultEl.textContent = 'Capabilities niet beschikbaar: ' + e.message;
-    }
     return;
-  }
-
-  // ── Easter egg: 5× tappen op resultaatveld toont camera-capabilities ──
-  // Handig voor support: "tik 5 keer onderaan in de scanner en stuur een screenshot"
-  if (resultEl) {
-    const debugInfo = [
-      caps.focusMode    ? 'focus:' + caps.focusMode.join(',') : 'focus:✗',
-      caps.focusDistance ? 'dist:' + caps.focusDistance.min + '-' + caps.focusDistance.max : 'dist:✗',
-      caps.zoom          ? 'zoom:' + caps.zoom.min + '-' + caps.zoom.max : 'zoom:✗',
-      caps.torch !== undefined ? 'torch:✓' : 'torch:✗',
-    ].join(' | ');
-
-    let _debugTaps = 0;
-    let _debugTimer = null;
-    resultEl.addEventListener('click', () => {
-      _debugTaps++;
-      clearTimeout(_debugTimer);
-      _debugTimer = setTimeout(() => { _debugTaps = 0; }, 1500);
-      if (_debugTaps >= 5) {
-        resultEl.style.color = 'rgba(255,255,255,.5)';
-        resultEl.style.fontSize = '11px';
-        resultEl.textContent = debugInfo;
-        _debugTaps = 0;
-      }
-    });
   }
 
   const controlsEl = document.getElementById('scannerControls');
@@ -233,10 +207,6 @@ function _initCameraControls() {
 
 // ============================================================
 // MACRO TOGGLE
-//
-// Zet focusMode op 'manual' en focusDistance op het minimum.
-// Hierdoor kan de camera van heel dichtbij scherpstellen op
-// kleine DataMatrix-codes die anders te klein zijn.
 // ============================================================
 function _toggleMacro() {
   if (!_html5QrCode) return;
@@ -265,7 +235,6 @@ function _toggleMacro() {
         btn.textContent = '🌱 Macro AAN';
       }
     } else {
-      // Terug naar continu-autofocus (of single-shot als fallback)
       const mode = (caps.focusMode && caps.focusMode.includes('continuous'))
         ? 'continuous' : 'single-shot';
       _html5QrCode.applyVideoConstraints({
