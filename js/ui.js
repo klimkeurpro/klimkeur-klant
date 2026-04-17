@@ -934,27 +934,31 @@ function _bouwPDF(items, ondertitel) {
   const rowH   = 6.5;
   const colW   = {
     nr:        8,
-    omschr:    55,
-    sn:        30,
-    status:    22,
-    keuring:   35,
+    omschr:    40,
+    merk:      22,
+    materiaal: 20,
+    sn:        28,
+    status:    20,
+    keuring:   25,
     opmerking: 0,
   };
-  colW.opmerking = contentW - colW.nr - colW.omschr - colW.sn - colW.status - colW.keuring;
+  colW.opmerking = contentW - colW.nr - colW.omschr - colW.merk - colW.materiaal - colW.sn - colW.status - colW.keuring;
 
   doc.setFillColor(...groen);
   doc.rect(margin, y, contentW, rowH, 'F');
-  doc.setFontSize(7.5);
+  doc.setFontSize(7);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(255, 255, 255);
 
   let x = margin + 2;
-  doc.text('#',            x, y + 4.5); x += colW.nr;
-  doc.text('Omschrijving', x, y + 4.5); x += colW.omschr;
-  doc.text('Serienummer',  x, y + 4.5); x += colW.sn;
-  doc.text('Status',       x, y + 4.5); x += colW.status;
+  doc.text('#',               x, y + 4.5); x += colW.nr;
+  doc.text('Omschrijving',    x, y + 4.5); x += colW.omschr;
+  doc.text('Merk',            x, y + 4.5); x += colW.merk;
+  doc.text('Materiaal',       x, y + 4.5); x += colW.materiaal;
+  doc.text('Serienummer',     x, y + 4.5); x += colW.sn;
+  doc.text('Status',          x, y + 4.5); x += colW.status;
   doc.text('Volgende keuring', x, y + 4.5); x += colW.keuring;
-  doc.text('Opmerking',    x, y + 4.5);
+  doc.text('Opmerking',       x, y + 4.5);
   y += rowH;
 
   // ---- TABEL RIJEN ----
@@ -984,18 +988,25 @@ function _bouwPDF(items, ondertitel) {
     doc.setTextColor(...donker);
     x = margin + 2;
 
+    doc.setFontSize(7);
     doc.text(String(i + 1), x, y + 4.5); x += colW.nr;
 
     doc.setFont('helvetica', 'bold');
-    doc.text((item.omschrijving || '').substring(0, 28), x, y + 4.5);
+    doc.text((item.omschrijving || '').substring(0, 22), x, y + 4.5);
     doc.setFont('helvetica', 'normal');
     x += colW.omschr;
 
+    doc.text((item.merk || '').substring(0, 14), x, y + 4.5);
+    x += colW.merk;
+
+    doc.text((item.materiaal || '').substring(0, 12), x, y + 4.5);
+    x += colW.materiaal;
+
     doc.setFont('courier', 'normal');
-    doc.setFontSize(6.5);
-    doc.text((item.serienummer || '—').substring(0, 18), x, y + 4.5);
+    doc.setFontSize(6);
+    doc.text((item.serienummer || '—').substring(0, 16), x, y + 4.5);
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
+    doc.setFontSize(7);
     x += colW.sn;
 
     if (item.status === 'goedgekeurd')    doc.setTextColor(...groen);
@@ -1009,10 +1020,10 @@ function _bouwPDF(items, ondertitel) {
       if (ks === 'overdue')    doc.setTextColor(...rood);
       else if (ks === 'soon')  doc.setTextColor(...oranje);
       else                     doc.setTextColor(...groen);
-      doc.setFontSize(6.5);
-      doc.text(kt.substring(0, 22), x, y + 4.5);
+      doc.setFontSize(6);
+      doc.text(kt.substring(0, 18), x, y + 4.5);
       doc.setTextColor(...donker);
-      doc.setFontSize(7.5);
+      doc.setFontSize(7);
     } else {
       doc.setTextColor(...grijs);
       doc.text('—', x, y + 4.5);
@@ -1021,11 +1032,11 @@ function _bouwPDF(items, ondertitel) {
     x += colW.keuring;
 
     if (item.opmerking) {
-      doc.setFontSize(6.5);
+      doc.setFontSize(6);
       doc.setTextColor(...oranje);
-      doc.text((item.opmerking || '').substring(0, 30), x, y + 4.5);
+      doc.text((item.opmerking || '').substring(0, 20), x, y + 4.5);
       doc.setTextColor(...donker);
-      doc.setFontSize(7.5);
+      doc.setFontSize(7);
     }
 
     doc.setDrawColor(...lichtgrijs);
