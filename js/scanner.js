@@ -127,13 +127,34 @@ function openScanner(doelVeldId) {
 function _initCameraControls() {
   if (!_html5QrCode) return;
 
+  const resultEl = document.getElementById('scannerResultaat');
+
   let caps;
   try {
     caps = _html5QrCode.getRunningTrackCapabilities();
   } catch (e) {
     console.warn('Camera capabilities niet beschikbaar:', e);
+    if (resultEl) {
+      resultEl.style.color = '#E74C3C';
+      resultEl.textContent = 'Capabilities niet beschikbaar: ' + e.message;
+    }
     return;
   }
+
+  // ── Debug: toon wat de camera ondersteunt ────────────────────
+  // TODO: verwijder dit blok na testen
+  const debugInfo = [
+    caps.focusMode   ? 'focus:' + caps.focusMode.join(',') : 'focus:✗',
+    caps.focusDistance ? 'dist:' + caps.focusDistance.min + '-' + caps.focusDistance.max : 'dist:✗',
+    caps.zoom         ? 'zoom:' + caps.zoom.min + '-' + caps.zoom.max : 'zoom:✗',
+    caps.torch !== undefined ? 'torch:✓' : 'torch:✗',
+  ].join(' | ');
+  if (resultEl) {
+    resultEl.style.color = 'rgba(255,255,255,.5)';
+    resultEl.style.fontSize = '11px';
+    resultEl.textContent = debugInfo;
+  }
+  // ── Einde debug ─────────────────────────────────────────────
 
   const controlsEl = document.getElementById('scannerControls');
   if (!controlsEl) return;
