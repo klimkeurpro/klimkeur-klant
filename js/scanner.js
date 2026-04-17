@@ -121,14 +121,10 @@ function openScanner(doelVeldId) {
     _initCameraControls();
   }).catch(err => {
     console.error('Scanner starten mislukt:', err);
-    // Verberg het reader-element zodat het geen clicks blokkeert
-    const readerEl = document.getElementById('scannerReader');
-    if (readerEl) readerEl.style.display = 'none';
-    const resultEl = document.getElementById('scannerResultaat');
-    if (resultEl) {
-      resultEl.style.color = '#E74C3C';
-      resultEl.textContent = 'Camera niet beschikbaar. Controleer de machtigingen.';
-    }
+    // Camera niet beschikbaar — sluit scanner direct en meld het
+    _html5QrCode = null;
+    sluitScanner();
+    alert('Camera niet beschikbaar. Controleer de machtigingen.');
   });
 }
 
@@ -305,13 +301,16 @@ function onScanResultaat(tekst) {
  * Sluit de scanner en ruim op
  */
 function sluitScanner() {
-  if (_html5QrCode && _scannerActief) {
-    _html5QrCode.stop().then(() => {
-      _html5QrCode.clear();
-    }).catch(err => {
-      console.warn('Scanner stoppen fout:', err);
-    });
+  try {
+    if (_html5QrCode && _scannerActief) {
+      _html5QrCode.stop().then(() => {
+        _html5QrCode.clear();
+      }).catch(() => {});
+    }
+  } catch (e) {
+    // Negeer fouten — opruimen is belangrijker
   }
+
   _scannerActief = false;
   _html5QrCode = null;
   _scannerDoelVeld = null;
