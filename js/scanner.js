@@ -30,6 +30,12 @@ function openScanner(doelVeldId) {
   _macroActief = false;
   _torchAan = false;
 
+  // Verberg alle actieve modals zodat ze de scanner niet blokkeren
+  document.querySelectorAll('.modal-overlay.active').forEach(m => {
+    m.classList.add('scanner-verborgen');
+    m.classList.remove('active');
+  });
+
   // Maak overlay aan
   const overlay = document.createElement('div');
   overlay.id = 'scannerOverlay';
@@ -314,4 +320,10 @@ function sluitScanner() {
 
   const overlay = document.getElementById('scannerOverlay');
   if (overlay) overlay.remove();
+
+  // Toon modals die we verborgen hadden weer
+  document.querySelectorAll('.modal-overlay.scanner-verborgen').forEach(m => {
+    m.classList.remove('scanner-verborgen');
+    m.classList.add('active');
+  });
 }
