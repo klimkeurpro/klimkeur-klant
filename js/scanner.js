@@ -71,7 +71,7 @@ function openScanner(doelVeldId) {
       </div>
     </div>
 
-    <div id="scannerResultaat" style="color:#8BC53F;font-size:16px;font-weight:600;margin-top:16px;min-height:24px;text-align:center;"></div>
+    <div id="scannerResultaat" style="color:#8BC53F;font-size:16px;font-weight:600;margin-top:16px;min-height:44px;width:100%;max-width:500px;text-align:center;display:flex;align-items:center;justify-content:center;"></div>
     <button onclick="sluitScanner()" style="
       margin-top:20px;padding:10px 32px;background:none;border:2px solid rgba(255,255,255,.4);
       color:#fff;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;
