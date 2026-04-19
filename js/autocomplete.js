@@ -1,378 +1,244 @@
 'use strict';
 
 // ============================================================
-// data.js — Artikelen en keuringen laden, opslaan, verwijderen
-//
-// ARTIKEL_ID FIX:
-//   Elk item heeft nu:
-//     - id       → database rij-ID (uniek per rij)
-//     - itemId   → persistent artikel-ID (kolom 'artikel_id')
-//   Historie wordt opgezocht via itemId.
-//
-// KEURINGSTERMIJN:
-//   Groen:  < 11 maanden sinds laatste keuring
-//   Oranje: 11–12 maanden (bijna tijd, telt mee als "keuring nodig")
-//   Rood:   > 12 maanden (te laat)
+// autocomplete.js — Productendatabase zoeken
+// Zoekt in de producten tabel op omschrijving, merk, materiaal
+// Filtert op bedrijf_id van de ingelogde klant
+// Als merk én/of materiaal ingevuld zijn, wordt de dropdown
+// automatisch beperkt tot die combinatie
+// Vrije invoer blijft altijd mogelijk
 // ============================================================
 
-// In-memory opslag (wordt gevuld na inloggen)
-let _artikelen = [];   // alle keuring_items van deze klant
-let _keuringen = [];   // alle keuringen van deze klant
+const _acStaat = {
+  main: { resultaten: [], selectie: -1, timer: null },
+  edit: { resultaten: [], selectie: -1, timer: null },
+};
 
 // ============================================================
-// ARTIKELEN LADEN
-// Filter op klant_id — NIET op auth_user_id
-// Items worden aangemaakt door de keurmeester, niet de klant
+// HULPFUNCTIES om huidige veldwaarden op te halen
 // ============================================================
-async function laadArtikelen() {
-  if (!_klantId) return;
+function _getMerk(context) {
+  const id = context === 'main' ? 'fMerk' : 'eMerk';
+  return (document.getElementById(id)?.value || '').trim();
+}
 
-  try {
-    const { data, error } = await sb
-      .from('keuring_items')
-      .select('*')
-      .eq('klant_id', _klantId)
-      .order('aangemaakt_op', { ascending: false });
+function _getMateriaal(context) {
+  const id = context === 'main' ? 'fMateriaal' : 'eMateriaal';
+  return (document.getElementById(id)?.value || '').trim();
+}
 
-    if (error) {
-      console.error('Artikelen laden fout:', error);
-      toast('Fout bij laden van artikelen', 'error');
-      return;
-    }
-
-    // Vertaal database-velden naar interne naamgeving
-    _artikelen = (data || []).map(rij => ({
-      id:           rij.id,
-      // ── ARTIKEL_ID FIX ──
-      // itemId = persistent artikel-ID voor historie
-      // Fallback naar rij.id voor oude data zonder artikel_id
-      itemId:       rij.artikel_id || rij.id,
-      omschrijving: rij.omschrijving || '',
-      merk:         rij.merk || '',
-      materiaal:    rij.materiaal || '',
-      serienummer:  rij.serienummer || '',
-      fabrJaar:     rij.fabr_jaar || '',
-      fabrMaand:    rij.fabr_maand || '',
-      productieDatum: rij.productie_datum || '',
-      inGebruik:    rij.in_gebruik || '',
-      gebruiker:    rij.gebruiker || '',
-      opmerking:    rij.opmerking || '',
-      handleiding:  rij.handleiding || '',
-      status:       rij.status || 'nieuw',
-      keuringId:    rij.keuring_id || null,
-      toegevoegd:   rij.aangemaakt_op || '',
-      afgevoerd:    rij.afgevoerd || false,
-    }));
-
-    // Artikelen direct renderen — keuringen zijn mogelijk nog niet geladen.
-    // renderArtikelen() wordt nogmaals aangeroepen vanuit laadKeuringen()
-    // zodra die klaar is, zodat de keuringdatum dan wel beschikbaar is.
-    renderArtikelen();
-
-  } catch (err) {
-    console.error('Onverwachte fout bij laden artikelen:', err);
-    toast('Fout bij laden van artikelen', 'error');
-  }
+function _getOmschrijving(context) {
+  const id = context === 'main' ? 'fOmschr' : 'eOmschr';
+  return (document.getElementById(id)?.value || '').trim();
 }
 
 // ============================================================
-// ARTIKEL OPSLAAN (nieuw of bewerkt)
-// bedrijf_id meegeven — anders valt het buiten de RLS filter
+// ZOEKEN VANUIT OMSCHRIJVING
 // ============================================================
-async function slaArtikelOp(art) {
-  const rij = {
-    id:              art.id,
-    // ── ARTIKEL_ID FIX ── artikel_id meesturen
-    artikel_id:      art.itemId || null,
-    klant_id:        _klantId,
-    bedrijf_id:      _bedrijfId,
-    auth_user_id:    _userId,
-    omschrijving:    art.omschrijving,
-    merk:            art.merk || '',
-    materiaal:       art.materiaal || '',
-    serienummer:     art.serienummer,
-    productie_datum: art.productieDatum || '',
-    fabr_jaar:       art.fabrJaar ? parseInt(art.fabrJaar) : null,
-    fabr_maand:      art.fabrMaand || null,
-    in_gebruik:      art.inGebruik || null,
-    gebruiker:       art.gebruiker || '',
-    opmerking:       art.opmerking || '',
-    handleiding:     art.handleiding || null,
-    status:          art.status || 'nieuw',
-    keuring_id:      art.keuringId || null,
-    afgevoerd:       art.afgevoerd || false,
-  };
-
-  try {
-    const { error } = await sb
-      .from('keuring_items')
-      .upsert(rij, { onConflict: 'id' });
-
-    if (error) {
-      console.error('Artikel opslaan fout:', error);
-      toast('Fout bij opslaan', 'error');
-      return false;
-    }
-
-    return true;
-
-  } catch (err) {
-    console.error('Onverwachte fout bij opslaan artikel:', err);
-    toast('Fout bij opslaan', 'error');
-    return false;
-  }
+function acZoeken(waarde, context) {
+  const staat = _acStaat[context];
+  if (!staat) return;
+  clearTimeout(staat.timer);
+  if (waarde.trim().length < 2) { acSluit(context); return; }
+  staat.timer = setTimeout(() => acVoerZoekopdrachUit(waarde.trim(), context), 250);
 }
 
 // ============================================================
-// ARTIKEL AFVOEREN
-// Zet afgevoerd=true — artikel blijft in database en certificaten
-// maar verdwijnt uit de actieve lijst van de klant
+// ZOEKEN VANUIT MERK OF MATERIAAL VELD
 // ============================================================
-async function voerArtikelAf(id, reden) {
-  try {
-    const { error } = await sb
-      .from('keuring_items')
-      .update({ afgevoerd: true, opmerking: reden || 'Afgevoerd' })
-      .eq('id', id);
-
-    if (error) {
-      console.error('Artikel afvoeren fout:', error);
-      toast('Fout bij afvoeren', 'error');
-      return false;
-    }
-
-    return true;
-
-  } catch (err) {
-    console.error('Onverwachte fout bij afvoeren artikel:', err);
-    toast('Fout bij afvoeren', 'error');
-    return false;
-  }
+function acZoekenOpVeld(context) {
+  const staat = _acStaat[context];
+  if (!staat) return;
+  clearTimeout(staat.timer);
+  const merk      = _getMerk(context);
+  const materiaal = _getMateriaal(context);
+  const omschr    = _getOmschrijving(context);
+  if (!merk && !materiaal && !omschr) return;
+  // Minimaal 2 tekens in merk of materiaal voor dropdown verschijnt
+  if (merk.length < 2 && materiaal.length < 2 && omschr.length < 2) return;
+  staat.timer = setTimeout(() => acVoerZoekopdrachUit(omschr || '', context), 400);
 }
 
 // ============================================================
-// ARTIKEL VERWIJDEREN (alleen niet-gekoppelde artikelen)
+// QUERY UITVOEREN
 // ============================================================
-async function verwijderArtikelDb(id) {
-  try {
-    const { error } = await sb
-      .from('keuring_items')
-      .delete()
-      .eq('id', id);
+async function acVoerZoekopdrachUit(zoekterm, context) {
+  if (!_bedrijfId) return;
 
-    if (error) {
-      console.error('Artikel verwijderen fout:', error);
-      toast('Fout bij verwijderen', 'error');
-      return false;
-    }
-
-    return true;
-
-  } catch (err) {
-    console.error('Onverwachte fout bij verwijderen artikel:', err);
-    toast('Fout bij verwijderen', 'error');
-    return false;
-  }
-}
-
-// ============================================================
-// KEURINGEN LADEN (2 queries, geen N+1 probleem)
-// Query 1: alle keuringen van deze klant
-// Query 2: alle keuring_items van die keuringen in één keer
-// Koppeling gebeurt in JavaScript
-// ============================================================
-async function laadKeuringen() {
-  if (!_klantId) return;
+  const merk      = _getMerk(context);
+  const materiaal = _getMateriaal(context);
 
   try {
-    const { data: keuringData, error: keuringFout } = await sb
-      .from('keuringen')
-      .select('*')
-      .eq('klant_id', _klantId)
-      .order('datum', { ascending: false });
+    let query = sb
+      .from('producten')
+      .select('omschrijving, merk, materiaal, categorie, handleiding')
+      .eq('bedrijf_id', _bedrijfId);
 
-    if (keuringFout) {
-      console.error('Keuringen laden fout:', keuringFout);
-      toast('Fout bij laden van keuringen', 'error');
-      return;
-    }
+    if (merk)      query = query.ilike('merk',      `%${merk}%`);
+    if (materiaal) query = query.ilike('materiaal', `%${materiaal}%`);
 
-    if (!keuringData || keuringData.length === 0) {
-      _keuringen = [];
-      renderCertificaat();
-      renderHistorie();
-      renderArtikelen();
-      return;
-    }
-
-    const keuringIds = keuringData.map(k => k.id);
-
-    const { data: itemData, error: itemFout } = await sb
-      .from('keuring_items')
-      .select('*')
-      .in('keuring_id', keuringIds);
-
-    if (itemFout) {
-      console.error('Keuring items laden fout:', itemFout);
-    }
-
-    const itemsPerKeuring = {};
-    (itemData || []).forEach(item => {
-      if (!itemsPerKeuring[item.keuring_id]) {
-        itemsPerKeuring[item.keuring_id] = [];
+    if (zoekterm) {
+      if (!merk && !materiaal) {
+        query = query.or(`omschrijving.ilike.%${zoekterm}%,merk.ilike.%${zoekterm}%,materiaal.ilike.%${zoekterm}%`);
+      } else {
+        query = query.ilike('omschrijving', `%${zoekterm}%`);
       }
-      itemsPerKeuring[item.keuring_id].push(item);
+    }
+
+    query = query.limit(15);
+
+    const { data, error } = await query;
+
+    if (error) { console.error('Autocomplete fout:', error); return; }
+
+    const lz = zoekterm.toLowerCase();
+    const gesorteerd = (data || []).sort((a, b) => {
+      const aBegin = (a.omschrijving || '').toLowerCase().startsWith(lz);
+      const bBegin = (b.omschrijving || '').toLowerCase().startsWith(lz);
+      if (aBegin && !bBegin) return -1;
+      if (!aBegin && bBegin) return 1;
+      return 0;
     });
 
-    _keuringen = keuringData.map(k => ({
-      id:                  k.id,
-      certificaat_nr:      k.certificaat_nr || '—',
-      datum:               k.datum || '',
-      keurmeester:         k.keurmeester || '',
-      bedrijf_keurmeester: k.bedrijf_keurmeester || '',
-      afgerond:            k.afgerond || false,
-      _items:              itemsPerKeuring[k.id] || [],
-    }));
-
-    renderCertificaat();
-    renderHistorie();
-    renderArtikelen(); // herrender nu _keuringen gevuld is — keuringdatum nu beschikbaar
+    _acStaat[context].resultaten = gesorteerd;
+    _acStaat[context].selectie   = -1;
+    acToonResultaten(zoekterm, context);
 
   } catch (err) {
-    console.error('Onverwachte fout bij laden keuringen:', err);
-    toast('Fout bij laden van keuringen', 'error');
+    console.error('Onverwachte fout bij autocomplete:', err);
   }
 }
 
 // ============================================================
-// HISTORIE PER ARTIKEL LADEN
-// Zoekt alle keuring_items met hetzelfde artikel_id,
-// haalt de bijbehorende keuring op voor datum en certificaatnr.
-// ── ARTIKEL_ID FIX ── Nieuw in klantapp
+// RESULTATEN TONEN
 // ============================================================
-async function laadArtikelHistorie(artikelId) {
-  if (!artikelId) return [];
+function acToonResultaten(zoekterm, context) {
+  const ddId = context === 'main' ? 'acDd' : 'acDdEdit';
+  const dd   = document.getElementById(ddId);
+  if (!dd) return;
 
-  try {
-    // Haal alle rijen op met dit artikel_id
-    const { data: items, error: itemFout } = await sb
-      .from('keuring_items')
-      .select('*, keuringen(id, datum, certificaat_nr, keurmeester, afgerond)')
-      .eq('artikel_id', artikelId)
-      .not('keuring_id', 'is', null)
-      .order('aangemaakt_op', { ascending: false });
+  const resultaten = _acStaat[context].resultaten;
 
-    if (itemFout) {
-      console.error('Artikel historie laden fout:', itemFout);
-      return [];
-    }
+  if (resultaten.length === 0) {
+    dd.innerHTML = `<div class="ac-item" onmousedown="acKiesVrij('${context}')">
+      <div class="ac-vrij">↵ Vrij invoeren — geen treffer in productendatabase</div>
+    </div>`;
+    dd.classList.add('open');
+    return;
+  }
 
-    // Vertaal naar bruikbaar formaat, sorteer op datum (nieuwste eerst)
-    const historie = (items || []).map(item => ({
-      datum:         item.keuringen?.datum || '',
-      certificaatNr: item.keuringen?.certificaat_nr || '—',
-      keurmeester:   item.keuringen?.keurmeester || '',
-      afgerond:      item.keuringen?.afgerond || false,
-      status:        item.status || '',
-      afkeurcode:    item.afkeurcode || '',
-      opmerking:     item.opmerking || '',
-      gebruiker:     item.gebruiker || '',
-      afgevoerd:     item.afgevoerd || false,
-    }));
+  const rx = zoekterm ? new RegExp(`(${escRx(zoekterm)})`, 'gi') : null;
 
-    historie.sort((a, b) => (b.datum || '').localeCompare(a.datum || ''));
-    return historie;
+  dd.innerHTML = resultaten.map((product, i) => {
+    const omschrHl = rx
+      ? esc(product.omschrijving).replace(rx, '<span class="ac-match">$1</span>')
+      : esc(product.omschrijving);
+    const sub = [product.merk, product.materiaal, product.categorie].filter(Boolean).join(' · ');
+    return `<div class="ac-item${_acStaat[context].selectie === i ? ' selected' : ''}"
+      onmousedown="acKies(${i}, '${context}')">
+      <div class="ac-omschr">${omschrHl}</div>
+      ${sub ? `<div class="ac-sub">${esc(sub)}</div>` : ''}
+    </div>`;
+  }).join('') + `<div class="ac-item" onmousedown="acKiesVrij('${context}')">
+    <div class="ac-vrij">↵ Vrij invoeren</div>
+  </div>`;
 
-  } catch (err) {
-    console.error('Onverwachte fout bij laden artikel historie:', err);
-    return [];
+  dd.classList.add('open');
+}
+
+// ============================================================
+// TOETSENBORD NAVIGATIE
+// ============================================================
+function acKey(event, context) {
+  const staat = _acStaat[context];
+  const ddId  = context === 'main' ? 'acDd' : 'acDdEdit';
+  const dd    = document.getElementById(ddId);
+  if (!dd || !dd.classList.contains('open')) return;
+
+  if (event.key === 'ArrowDown') {
+    event.preventDefault();
+    staat.selectie = Math.min(staat.selectie + 1, staat.resultaten.length - 1);
+    acToonResultaten(_getOmschrijving(context), context);
+    setTimeout(() => { const sel = document.querySelector('.ac-item.selected'); if (sel) sel.scrollIntoView({ block: 'nearest' }); }, 10);
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault();
+    staat.selectie = Math.max(staat.selectie - 1, -1);
+    acToonResultaten(_getOmschrijving(context), context);
+    setTimeout(() => { const sel = document.querySelector('.ac-item.selected'); if (sel) sel.scrollIntoView({ block: 'nearest' }); }, 10);
+  } else if (event.key === 'Enter') {
+    event.preventDefault();
+    if (staat.selectie >= 0) acKies(staat.selectie, context);
+    else acSluit(context);
+  } else if (event.key === 'Tab' && staat.selectie >= 0) {
+    event.preventDefault();
+    acKies(staat.selectie, context);
+  } else if (event.key === 'Escape') {
+    acSluit(context);
   }
 }
 
 // ============================================================
-// OPMERKING TOEVOEGEN AAN ARTIKEL
-// Slaat een opmerking op bij het meest recente keuring_item
-// van dit artikel. De keurmeester ziet dit bij de volgende keuring.
+// PRODUCT KIEZEN — vult alle velden in
 // ============================================================
-async function slaOpmerkingOp(artikelId, opmerking) {
-  if (!artikelId) return false;
+function acKies(index, context) {
+  const product = _acStaat[context].resultaten[index];
+  if (!product) return;
 
-  // Zoek het meest recente item met dit artikel_id
-  const artikel = _artikelen.find(a => a.itemId === artikelId);
-  if (!artikel) return false;
+  const prefix = context === 'main' ? 'f' : 'e';
 
-  try {
-    const { error } = await sb
-      .from('keuring_items')
-      .update({ opmerking: opmerking })
-      .eq('id', artikel.id);
+  const omschrEl    = document.getElementById(prefix + 'Omschr');
+  const merkEl      = document.getElementById(prefix + 'Merk');
+  const materiaalEl = document.getElementById(prefix + 'Materiaal');
+  const merkLbl     = document.getElementById(context === 'main' ? 'merkLabel' : 'eMerkLabel');
 
-    if (error) {
-      console.error('Opmerking opslaan fout:', error);
-      toast('Fout bij opslaan opmerking', 'error');
-      return false;
-    }
+  if (omschrEl) omschrEl.value = product.omschrijving;
 
-    // Update lokaal
-    artikel.opmerking = opmerking;
-    return true;
-
-  } catch (err) {
-    console.error('Onverwachte fout bij opslaan opmerking:', err);
-    toast('Fout bij opslaan opmerking', 'error');
-    return false;
+  if (merkEl) {
+    merkEl.value     = product.merk || '';
+    merkEl.className = product.merk ? 'form-input merk-auto' : 'form-input';
+    if (merkLbl) merkLbl.style.display = product.merk ? 'flex' : 'none';
   }
+
+  if (materiaalEl) materiaalEl.value = product.materiaal || '';
+
+  // Handleiding-URL bewaren op het omschrijving-veld als data-attribuut
+  if (omschrEl) omschrEl.dataset.handleiding = product.handleiding || '';
+
+  acSluit(context);
+
+  // Focus naar serienummer na kiezen
+  const snEl = document.getElementById(prefix === 'f' ? 'fSN' : 'eSN');
+  if (snEl) snEl.focus();
+}
+
+// ============================================================
+// VRIJ INVOEREN
+// ============================================================
+function acKiesVrij(context) {
+  acSluit(context);
+}
+
+// ============================================================
+// DROPDOWN SLUITEN
+// ============================================================
+function acSluit(context) {
+  const ddId = context === 'main' ? 'acDd' : 'acDdEdit';
+  const dd   = document.getElementById(ddId);
+  if (dd) dd.classList.remove('open');
+  if (_acStaat[context]) _acStaat[context].selectie = -1;
 }
 
 // ============================================================
 // HELPERS
 // ============================================================
-function genId() {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+function esc(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
-// ============================================================
-// KEURING STATUS BEREKENING
-//
-// De 12-maanden teller loopt vanaf de meest recente keuringdatum.
-// Als een artikel gekeurd is (keuringDatum aanwezig), overschrijft
-// die datum de inGebruik-datum als startpunt.
-//
-// Grenzen:
-//   < 11 maanden → 'ok'      (groen)
-//   11–12 maanden → 'soon'   (oranje — bijna tijd voor keuring)
-//   > 12 maanden → 'overdue' (rood — te laat)
-// ============================================================
-function keuringStatus(inGebruik, keuringDatum) {
-  const start = keuringDatum && keuringDatum > (inGebruik || '')
-    ? keuringDatum
-    : inGebruik;
-  if (!start) return null;
-  const maanden = (Date.now() - new Date(start + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24 * 30.44);
-  if (maanden >= 12) return 'overdue';
-  if (maanden >= 11) return 'soon';
-  return 'ok';
+function escAttr(s) {
+  return String(s || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
 }
 
-function keuringTekst(status, inGebruik, keuringDatum) {
-  const start = keuringDatum && keuringDatum > (inGebruik || '')
-    ? keuringDatum
-    : inGebruik;
-  if (!status || !start) return null;
-  const maanden = Math.round((Date.now() - new Date(start + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24 * 30.44));
-  if (status === 'overdue') return `⚠ Keuring nodig (${maanden} mnd geleden)`;
-  if (status === 'soon') {
-    const weken = Math.round((12 - maanden) * 4.35);
-    return `⏰ Keuring over ~${weken <= 0 ? '< 1' : weken} ${weken === 1 ? 'week' : 'weken'}`;
-  }
-  return `✓ Keuring over ${12 - maanden} mnd`;
-}
-
-function formatDatum(d) {
-  if (!d) return '';
-  try {
-    return new Date(d + (d.includes('T') ? '' : 'T00:00:00')).toLocaleDateString('nl-NL');
-  } catch {
-    return d;
-  }
+function escRx(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
