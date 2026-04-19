@@ -71,7 +71,7 @@ async function acVoerZoekopdrachUit(zoekterm, context) {
   try {
     let query = sb
       .from('producten')
-      .select('omschrijving, merk, materiaal, categorie')
+      .select('omschrijving, merk, materiaal, categorie, handleiding')
       .eq('bedrijf_id', _bedrijfId);
 
     if (merk)      query = query.ilike('merk',      `%${merk}%`);
@@ -200,6 +200,9 @@ function acKies(index, context) {
   }
 
   if (materiaalEl) materiaalEl.value = product.materiaal || '';
+
+  // Handleiding-URL bewaren op het omschrijving-veld als data-attribuut
+  if (omschrEl) omschrEl.dataset.handleiding = product.handleiding || '';
 
   acSluit(context);
 
