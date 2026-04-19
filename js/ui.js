@@ -35,17 +35,13 @@ function toast(bericht, type = 'success', ms = 3000) {
 
 // ============================================================
 // GEBRUIKER SELECTIE
-//
-// Na inloggen toont de app "Wie ben je?" met alle namen die
-// op artikelen staan. Keuze wordt onthouden per apparaat.
-// Vergelijking is case-insensitive, weergave is de mooiste versie.
 // ============================================================
 function _gebruikerKey() {
   return 'klimkeur_klant_gebruiker_' + (_bedrijfId || 'default');
 }
 
 function getUniekeGebruikers() {
-  const tellingen = {};  // lowerName → { naam: 'Mooiste Versie', count: 0 }
+  const tellingen = {};
   _artikelen.forEach(a => {
     if (!a.gebruiker) return;
     const lower = a.gebruiker.toLowerCase().trim();
@@ -54,7 +50,6 @@ function getUniekeGebruikers() {
       tellingen[lower] = { naam: a.gebruiker.trim(), count: 0 };
     }
     tellingen[lower].count++;
-    // Houd de versie met hoofdletters (meer specifiek) als "mooiste"
     const huidige = tellingen[lower].naam;
     if (a.gebruiker.trim() !== a.gebruiker.trim().toLowerCase() &&
         huidige === huidige.toLowerCase()) {
@@ -67,7 +62,7 @@ function getUniekeGebruikers() {
 }
 
 function gebruikerMatch(artikelGebruiker, filterNaam) {
-  if (!filterNaam) return true;  // geen filter = alles tonen
+  if (!filterNaam) return true;
   if (!artikelGebruiker) return false;
   return artikelGebruiker.toLowerCase().trim() === filterNaam.toLowerCase().trim();
 }
@@ -79,7 +74,6 @@ function toonGebruikerKeuze() {
   if (bedrijfLabel) bedrijfLabel.textContent = _klantNaam || 'Mijn Materiaal';
 
   if (gebruikers.length === 0) {
-    // Geen gebruikers → sla keuze over
     kiesGebruiker(null);
     return;
   }
@@ -102,19 +96,13 @@ function toonGebruikerKeuze() {
 function kiesGebruiker(naam) {
   _actieveGebruiker = naam;
   try { localStorage.setItem(_gebruikerKey(), naam || ''); } catch(e) {}
-
   el('gebruikerOverlay').style.display = 'none';
-
-  // Update knop in header
   const btn = el('gebruikerSwitchBtn');
   const naamSpan = el('gebruikerNaamBtn');
   if (btn) btn.style.cssText = 'display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.3);color:#fff;padding:5px 12px;border-radius:20px;cursor:pointer;font-size:13px;';
   if (naamSpan) naamSpan.textContent = naam || 'Iedereen';
-
-  // Auto-fill gebruiker bij toevoegen
   const fGebruiker = el('fGebruiker');
   if (fGebruiker && naam) fGebruiker.value = naam;
-
   renderArtikelen();
 }
 
@@ -122,30 +110,20 @@ function laadOpgeslagenGebruiker() {
   try {
     const opgeslagen = localStorage.getItem(_gebruikerKey());
     if (opgeslagen !== null && opgeslagen !== '') {
-      // Controleer of deze gebruiker nog bestaat in de huidige data
       const gebruikers = getUniekeGebruikers();
       const match = gebruikers.find(g => g.toLowerCase().trim() === opgeslagen.toLowerCase().trim());
-      if (match) {
-        kiesGebruiker(match);
-        return;
-      }
+      if (match) { kiesGebruiker(match); return; }
     }
-    if (opgeslagen === '') {
-      // Expliciet "Alles bekijken" gekozen
-      kiesGebruiker(null);
-      return;
-    }
+    if (opgeslagen === '') { kiesGebruiker(null); return; }
   } catch(e) {}
-  // Geen opgeslagen keuze → toon keuzescherm
   toonGebruikerKeuze();
 }
 
 // ============================================================
-// STATISTIEK FILTER — klikbare blokjes
+// STATISTIEK FILTER
 // ============================================================
 function setStatFilter(filter) {
   _statFilter = filter;
-  // Highlicht actief blokje
   ['statBoxTotaal', 'statBoxGoed', 'statBoxKeuring'].forEach(id => {
     const box = el(id);
     if (box) box.style.outline = 'none';
@@ -155,31 +133,21 @@ function setStatFilter(filter) {
                  : 'statBoxTotaal';
   const activeBox = el(activeId);
   if (activeBox) activeBox.style.outline = '2px solid var(--green)';
-
   renderArtikelen();
 }
 
 // ============================================================
 // ARTIKEL DEDUPLICATIE
-//
-// _artikelen bevat alle keuring_items rijen — dus hetzelfde
-// fysieke artikel kan meerdere keren voorkomen (eenmaal per keuring).
-// We groeperen op itemId en tonen alleen de meest recente versie.
-// Items zonder keuringId (door klant toegevoegd) tellen als apart.
 // ============================================================
 function getUniekeArtikelenLijst() {
   const groepen = {};
-
-  // Groepeer alle rijen op itemId (persistent artikel-ID)
   _artikelen.forEach(a => {
     const key = a.itemId || a.id;
     if (!groepen[key]) groepen[key] = [];
     groepen[key].push(a);
   });
 
-  // Voor elke groep: bepaal effectieve status en keuringsdatum
   return Object.values(groepen).map(rijen => {
-    // Sorteer op datum (nieuwste eerst)
     const gesorteerd = [...rijen].sort((a, b) => {
       const da = a.keuringId ? (_keuringen.find(k => k.id === a.keuringId)?.datum || '') : (a.toegevoegd || '');
       const db = b.keuringId ? (_keuringen.find(k => k.id === b.keuringId)?.datum || '') : (b.toegevoegd || '');
@@ -187,47 +155,29 @@ function getUniekeArtikelenLijst() {
     });
 
     const basis = gesorteerd[0];
-
-    // Laatste echte beoordeling — 'nieuw' telt niet als beoordeling
-    const laatsteBeoordeling = gesorteerd.find(r =>
-      r.status === 'goedgekeurd' || r.status === 'afgekeurd'
-    );
-
-    // Laatste goedkeuring — bepaalt de 12-maanden teller
+    const laatsteBeoordeling = gesorteerd.find(r => r.status === 'goedgekeurd' || r.status === 'afgekeurd');
     const laatsteGoedkeuring = gesorteerd.find(r => r.status === 'goedgekeurd');
 
-    // Bepaal effectieve status
     let effectieveStatus = '';
     if (laatsteBeoordeling) {
       effectieveStatus = laatsteBeoordeling.status;
     } else if (basis.inGebruik) {
-      // Nog nooit gekeurd, maar wel ingebruikname datum
       const maanden = (Date.now() - new Date(basis.inGebruik + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24 * 30.44);
       if (maanden < 12) effectieveStatus = 'nieuw';
     }
 
-    // Bepaal effectieve keuringsdatum (voor de 12-mnd teller)
     let effectieveKeuringDatum = null;
     if (laatsteGoedkeuring && laatsteGoedkeuring.keuringId) {
       effectieveKeuringDatum = _keuringen.find(k => k.id === laatsteGoedkeuring.keuringId)?.datum || null;
     }
 
-    return {
-      ...basis,
-      _effectieveStatus:       effectieveStatus,
-      _effectieveKeuringDatum: effectieveKeuringDatum,
-    };
+    return { ...basis, _effectieveStatus: effectieveStatus, _effectieveKeuringDatum: effectieveKeuringDatum };
   });
 }
 
 // ============================================================
-// ARTIKELEN RENDEREN — kaartjes voor mobiel
+// ARTIKELEN RENDEREN
 // ============================================================
-
-// Vindt de index in _artikelen van de representatieve rij voor een itemId.
-// _artikelen bevat meerdere rijen per uniek artikel (één per keuring).
-// Voor bewerken/afvoeren hebben we de MEEST RECENTE rij nodig — dat is
-// dezelfde rij die getUniekeArtikelenLijst() als basis pakt.
 function _vindArtikelIndexOpItemId(itemId) {
   if (!itemId) return -1;
   let besteIdx = -1;
@@ -239,18 +189,11 @@ function _vindArtikelIndexOpItemId(itemId) {
     const datum = a.keuringId
       ? (_keuringen.find(k => k.id === a.keuringId)?.datum || '')
       : (a.toegevoegd || '');
-    if (datum >= besteDatum) {
-      besteDatum = datum;
-      besteIdx = i;
-    }
+    if (datum >= besteDatum) { besteDatum = datum; besteIdx = i; }
   }
   return besteIdx;
 }
 
-// Eén delegated click-listener op #artLijst. Elke kaart en elke actieknop
-// draagt een data-action attribuut; closest() kiest het specifiekste.
-// Zo is er geen stopPropagation-dans meer nodig en kan de DOM vrij
-// vervangen worden door innerHTML zonder listeners te verliezen.
 function _artLijstClickHandler(event) {
   const target = event.target.closest('[data-action]');
   if (!target) return;
@@ -258,12 +201,12 @@ function _artLijstClickHandler(event) {
   const itemId = target.dataset.itemId;
   if (!itemId) return;
 
-  if (action === 'historie')      openHistorie(itemId);
-  else if (action === 'edit')     openEdit(itemId);
-  else if (action === 'afvoer')   openAfvoerDialog(itemId);
+  if (action === 'historie')        openHistorie(itemId);
+  else if (action === 'edit')       openEdit(itemId);
+  else if (action === 'afvoer')     openAfvoerDialog(itemId);
+  else if (action === 'handleiding') openHandleiding(itemId);
 }
 
-// Registreer de listener één keer, zodra #artLijst bestaat.
 (function _initArtLijstDelegation() {
   const bind = () => {
     const lijst = document.getElementById('artLijst');
@@ -272,12 +215,19 @@ function _artLijstClickHandler(event) {
       lijst.dataset.delegationBound = '1';
     }
   };
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', bind);
-  } else {
-    bind();
-  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  else bind();
 })();
+
+// ============================================================
+// HANDLEIDING OPENEN — nieuw tabblad naar de URL
+// ============================================================
+function openHandleiding(itemId) {
+  const idx = _vindArtikelIndexOpItemId(itemId);
+  const art = _artikelen[idx];
+  if (!art || !art.handleiding) return;
+  window.open(art.handleiding, '_blank', 'noopener');
+}
 
 function zoekArtikelen(waarde) {
   _artZoek = waarde.toLowerCase().trim();
@@ -294,12 +244,10 @@ function renderArtikelen() {
   const actief    = alleUniek.filter(a => !a.afgevoerd);
   const afgevoerd = alleUniek.filter(a => a.afgevoerd);
 
-  // ── Gebruikersfilter toepassen ────────────────────────────
   const gefilterdOpGebruiker = _actieveGebruiker
     ? actief.filter(a => gebruikerMatch(a.gebruiker, _actieveGebruiker))
     : actief;
 
-  // ── Statistieken berekenen (na gebruikersfilter) ──────────
   const totaal = gefilterdOpGebruiker.length;
   const goed   = gefilterdOpGebruiker.filter(a => a._effectieveStatus === 'goedgekeurd').length;
   const nodig  = gefilterdOpGebruiker.filter(a => {
@@ -312,10 +260,9 @@ function renderArtikelen() {
   el('statGoed').textContent    = goed;
   el('statKeuring').textContent = nodig;
 
-  // ── Stat-filter toepassen ─────────────────────────────────
   let teTonenLijst = _toonAfgevoerd ? afgevoerd : gefilterdOpGebruiker;
 
- if (_statFilter === 'goedgekeurd') {
+  if (_statFilter === 'goedgekeurd') {
     teTonenLijst = teTonenLijst.filter(a => a._effectieveStatus === 'goedgekeurd');
   } else if (_statFilter === 'keuring') {
     teTonenLijst = teTonenLijst.filter(a => {
@@ -325,7 +272,6 @@ function renderArtikelen() {
     });
   }
 
-  // ── Zoekfilter ────────────────────────────────────────────
   if (_artZoek) {
     teTonenLijst = teTonenLijst.filter(a =>
       [a.omschrijving, a.merk, a.materiaal, a.serienummer, a.gebruiker].some(v =>
@@ -334,7 +280,6 @@ function renderArtikelen() {
     );
   }
 
-  // ── Sorteer ───────────────────────────────────────────────
   const gesorteerd = [...teTonenLijst].sort((a, b) => {
     const va = String(a[_artSort.col] || '').toLowerCase();
     const vb = String(b[_artSort.col] || '').toLowerCase();
@@ -368,19 +313,12 @@ function renderArtikelen() {
     return;
   }
 
-  // ── Kaartjes renderen ─────────────────────────────────────
-  // Identity via itemId, NIET via array-index. _artikelen bevat meerdere
-  // rijen per uniek artikel (één per keuring); indexOf op een object uit
-  // getUniekeArtikelenLijst() geeft altijd -1 omdat dat een nieuw object
-  // is (spread-copy). Acties worden via event-delegation op #artLijst
-  // afgehandeld — zie _artLijstClickHandler.
   lijst.innerHTML = gesorteerd.map(art => {
     const itemId = art.itemId || art.id || '';
     const kd  = art._effectieveKeuringDatum;
     const ks  = art._effectieveStatus === 'afgekeurd' ? null : keuringStatus(art.inGebruik, kd);
     const kt  = ks ? keuringTekst(ks, art.inGebruik, kd) : null;
 
-    // Status badge — op basis van effectieve status
     let statusHtml = '';
     if (art._effectieveStatus === 'goedgekeurd') {
       statusHtml = '<span style="background:#EAF3DE;color:#3B6D11;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500;white-space:nowrap">Goed</span>';
@@ -390,7 +328,6 @@ function renderArtikelen() {
       statusHtml = '<span style="background:#E6F1FB;color:#185FA5;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500;white-space:nowrap">Nieuw</span>';
     }
 
-    // Keuring regel
     let keuringHtml = '';
     if (kt) {
       const kleur = ks === 'overdue' ? 'var(--danger,#c0392b)' :
@@ -399,30 +336,27 @@ function renderArtikelen() {
       keuringHtml = `<div style="font-size:12px;color:${kleur};margin-top:4px">${kt}</div>`;
     }
 
-    // Opmerking
     const opmHtml = art.opmerking
       ? `<div style="font-size:11px;color:var(--warning,#e67e22);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">⚠ ${esc(art.opmerking)}</div>`
       : '';
 
-    // Detail regel
     const details = [
       art.merk || '',
       art.serienummer ? 'SN: ' + art.serienummer : '',
     ].filter(Boolean).join(' · ');
 
-    // Gebruiker (alleen tonen in "alles bekijken" modus)
     const gebruikerHtml = !_actieveGebruiker && art.gebruiker
       ? `<div style="font-size:11px;color:var(--text-muted,#999);margin-top:2px">👤 ${esc(art.gebruiker)}</div>`
       : '';
 
     const opacity = art.afgevoerd ? 'opacity:0.5;' : '';
-
-    // Card + knoppen zijn puur declaratief: data-action + data-item-id.
-    // De enige click-listener zit op #artLijst (event-delegation) en
-    // routeert op basis van closest('[data-action]'). Knopklikken hoeven
-    // dus niet stopPropagation te doen — delegatie kiest het specifiekste
-    // data-action element, niet de card eromheen.
     const itemIdAttr = esc(itemId);
+
+    // Handleiding knopje — alleen tonen als er een URL is
+    const handleidingBtn = art.handleiding
+      ? `<button type="button" data-action="handleiding" data-item-id="${itemIdAttr}" title="Handleiding openen" style="background:none;border:1px solid var(--border,#ddd);padding:4px 8px;border-radius:6px;font-size:12px;cursor:pointer;color:var(--green,#5B9A2F)">📄</button>`
+      : '';
+
     return `<div class="art-card" data-action="historie" data-item-id="${itemIdAttr}"
       style="background:var(--bg-card,#fff);border:1px solid var(--border,#e0e0e0);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;${opacity}">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
@@ -438,7 +372,7 @@ function renderArtikelen() {
       <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end">
         ${art.afgevoerd
           ? '<span style="font-size:11px;color:var(--text-muted);font-style:italic">Afgevoerd</span>'
-          : `<button type="button" data-action="edit" data-item-id="${itemIdAttr}" style="background:none;border:1px solid var(--border,#ddd);padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;color:var(--text-secondary,#666)">Bewerken</button>
+          : `${handleidingBtn}<button type="button" data-action="edit" data-item-id="${itemIdAttr}" style="background:none;border:1px solid var(--border,#ddd);padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;color:var(--text-secondary,#666)">Bewerken</button>
              <button type="button" data-action="afvoer" data-item-id="${itemIdAttr}" style="background:rgba(243,156,18,0.1);border:1px solid var(--warning,#e67e22);padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;color:var(--warning,#e67e22)">Afvoeren</button>`
         }
       </div>
@@ -447,8 +381,6 @@ function renderArtikelen() {
 
   _updateAfgevoerdToggle(afgevoerd.length);
 
-  // Highlight actief stat-blokje
-  // (NIET setStatFilter aanroepen — dat veroorzaakt een lus)
   ['statBoxTotaal', 'statBoxGoed', 'statBoxKeuring'].forEach(id => {
     const box = el(id);
     if (box) box.style.outline = 'none';
@@ -485,7 +417,6 @@ function _updateAfgevoerdToggle(aantalAfgevoerd) {
 // ============================================================
 function toggleToevoegForm() {
   el('toevoegModal').classList.add('active');
-  // Auto-fill gebruiker als er een actieve gebruiker is
   const fGebruiker = el('fGebruiker');
   if (fGebruiker && _actieveGebruiker && !fGebruiker.value) {
     fGebruiker.value = _actieveGebruiker;
@@ -528,7 +459,7 @@ async function voegToe() {
 
   const art = {
     id:             genId(),
-    itemId:         genId(),  // ── ARTIKEL_ID FIX ── persistent artikel-ID
+    itemId:         genId(),
     omschrijving:   omschr,
     merk:           el('fMerk').value.trim(),
     materiaal:      el('fMateriaal').value.trim() || el('fOmschr').dataset.materiaal || '',
@@ -539,6 +470,7 @@ async function voegToe() {
     inGebruik:      el('fInGebruik').value,
     gebruiker:      el('fGebruiker').value.trim(),
     opmerking:      voegOpmerkingPrefix(opmerking),
+    handleiding:    el('fOmschr').dataset.handleiding || '',
     toegevoegd:     new Date().toISOString(),
     status:         'nieuw',
     keuringId:      null,
@@ -570,6 +502,7 @@ async function voegToe() {
   el('fOpmerking').value = '';
   el('fMateriaal').value = '';
   el('fOmschr').dataset.materiaal = '';
+  el('fOmschr').dataset.handleiding = '';
   el('fGebruiker').value = gebruiker;
 
   sluitToevoegModal();
@@ -585,9 +518,6 @@ function openEdit(itemId) {
   const a = _artikelen[idx];
   if (!a) return;
 
-  // We bewaren itemId — NIET de array-index — in het formulier. Zo blijft
-  // de referentie stabiel als _artikelen tussendoor muteert (nieuwe rij
-  // via keuring, afvoer, herlaad vanuit DB).
   el('editItemId').value = itemId;
   el('eOmschr').value    = a.omschrijving || '';
   el('eMerk').value      = a.merk || '';
@@ -599,6 +529,10 @@ function openEdit(itemId) {
   el('eMaand').value     = a.fabrMaand || '';
   el('eInGebruik').value = a.inGebruik || '';
   el('eGebruiker').value = a.gebruiker || '';
+
+  // Handleiding-URL bewaren op het omschrijving-veld zodat
+  // een autocomplete-keuze deze kan overschrijven
+  el('eOmschr').dataset.handleiding = a.handleiding || '';
 
   const naam = _klantNaam || 'Klant';
   const opmZonderPrefix = (a.opmerking || '').startsWith(naam + ': ')
@@ -641,6 +575,13 @@ async function slaEditOp() {
   const gekoppeld = !!a.keuringId;
   const opmerking = el('eOpmerking').value.trim();
 
+  // Handleiding: als autocomplete een nieuwe URL heeft gezet, gebruik die.
+  // Anders: behoud de bestaande waarde.
+  const nieuweHandleiding = el('eOmschr').dataset.handleiding;
+  const handleiding = (nieuweHandleiding !== undefined && nieuweHandleiding !== '')
+    ? nieuweHandleiding
+    : a.handleiding;
+
   const bijgewerkt = {
     ...a,
     omschrijving:   gekoppeld ? a.omschrijving   : omschr,
@@ -652,6 +593,7 @@ async function slaEditOp() {
     inGebruik:      gekoppeld ? a.inGebruik      : el('eInGebruik').value,
     gebruiker:      el('eGebruiker').value.trim(),
     opmerking:      voegOpmerkingPrefix(opmerking),
+    handleiding:    handleiding || '',
   };
 
   const ok = await slaArtikelOp(bijgewerkt);
@@ -674,8 +616,6 @@ function openAfvoerDialog(itemId) {
   const overlay = document.createElement('div');
   overlay.id = 'afvoerOverlay';
   overlay.className = 'modal-overlay active';
-  // itemId is veilig als attribuut (UUID-achtig); toch escapen we het voor
-  // de inline onclick om geen enkele ruimte te laten voor quote-injectie.
   const itemIdJs = itemId.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
   overlay.innerHTML = `
     <div class="modal">
@@ -720,7 +660,7 @@ async function bevestigAfvoer(itemId) {
 }
 
 // ============================================================
-// HISTORIE MODAL — keuringsgeschiedenis per artikel
+// HISTORIE MODAL
 // ============================================================
 async function openHistorie(artikelId) {
   if (!artikelId) return;
@@ -731,11 +671,9 @@ async function openHistorie(artikelId) {
   const titel  = el('historieTitel');
   const opmVeld = el('historieOpmerking');
 
-  // Zoek het artikel voor de titel
   const art = _artikelen.find(a => a.itemId === artikelId);
   if (titel) titel.textContent = art ? art.omschrijving : 'Keuringshistorie';
 
-  // Huidige opmerking invullen (zonder prefix)
   if (opmVeld && art) {
     const naam = _klantNaam || 'Klant';
     const opmZonder = (art.opmerking || '').startsWith(naam + ': ')
@@ -747,7 +685,6 @@ async function openHistorie(artikelId) {
   modal.classList.add('active');
   inhoud.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">Historie laden...</div>';
 
-  // Laad historie uit database
   const historie = await laadArtikelHistorie(artikelId);
 
   if (historie.length === 0) {
@@ -807,7 +744,6 @@ async function slaHistorieOpmerkingOp() {
   const ok = await slaOpmerkingOp(_historieArtikelId, volledig);
   if (!ok) return;
 
-  // Update lokaal
   const art = _artikelen.find(a => a.itemId === _historieArtikelId);
   if (art) art.opmerking = volledig;
 
@@ -816,53 +752,28 @@ async function slaHistorieOpmerkingOp() {
 }
 
 // ============================================================
-// CERTIFICAAT DATA BOUWEN — voor PDF generatie
-// Wordt aangeroepen vanuit laadKeuringen() via renderCertificaat()
+// CERTIFICAAT DATA BOUWEN
 // ============================================================
-function renderCertificaat() {
-  bouwCertData();
-}
-
-function renderHistorie() {
-  // Niet meer nodig — historie zit nu in de artikel-modal
-}
+function renderCertificaat() { bouwCertData(); }
+function renderHistorie() { /* niet meer nodig */ }
 
 function bouwCertData() {
-  if (_keuringen.length === 0) {
-    _certData = null;
-    return;
-  }
+  if (_keuringen.length === 0) { _certData = null; return; }
   const k = _keuringen[0];
   _certData = {
     certificaat: {
-      nr:          k.certificaat_nr || '—',
-      datum:       k.datum || '',
-      keurmeester: k.keurmeester || '',
-      bedrijf:     k.bedrijf_keurmeester || '',
-      afgerond:    k.afgerond || false,
+      nr: k.certificaat_nr || '—', datum: k.datum || '',
+      keurmeester: k.keurmeester || '', bedrijf: k.bedrijf_keurmeester || '',
+      afgerond: k.afgerond || false,
     },
     items: k._items || [],
   };
 }
 
-// ============================================================
-// TABS — stub voor backwards compatibility
-// switchTab werd aangeroepen in de oude index.html
-// ============================================================
 function switchTab() { /* niet meer nodig */ }
 
 // ============================================================
 // PDF GENERATIE — MATERIAALOVERZICHT
-//
-// Dit is nadrukkelijk GEEN officieel certificaat.
-// - Geen handtekening van de keurmeester
-// - Geen juridische status
-// - Wél: keuringsstatus, vervaldatum, opmerkingen
-// - Duidelijk gelabeld als "Materiaaloverzicht"
-// - Verwijzing naar het officiële certificaatnummer
-//
-// Het officiële certificaat wordt door de keurmeester
-// verstuurd per e-mail vanuit KlimKeur Pro.
 // ============================================================
 function _bouwPDF(items, ondertitel) {
   const { jsPDF } = window.jspdf;
@@ -881,208 +792,119 @@ function _bouwPDF(items, ondertitel) {
   const rood       = [192, 57, 43];
   let y            = margin;
 
-  // ---- HEADER ----
   doc.setFillColor(...groen);
   doc.rect(0, 0, pageW, 22, 'F');
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(14); doc.setFont('helvetica', 'bold'); doc.setTextColor(255, 255, 255);
   doc.text('MATERIAALOVERZICHT', margin, 14);
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8); doc.setFont('helvetica', 'normal');
   doc.text(c.bedrijf || '', pageW - margin, 14, { align: 'right' });
-
   y = 30;
 
-  // ---- INFO BLOK ----
   const infoRijen = [
-    ['Eigenaar:',       _klantNaam || '—'],
-    ['Keuringsdatum:',  c.datum ? formatDatum(c.datum) : '—'],
-    ['Keurmeester:',    c.keurmeester || '—'],
-    ['Op certificaat:', c.nr || '—'],
-    ['Gegenereerd op:', vandaag],
+    ['Eigenaar:', _klantNaam || '—'], ['Keuringsdatum:', c.datum ? formatDatum(c.datum) : '—'],
+    ['Keurmeester:', c.keurmeester || '—'], ['Op certificaat:', c.nr || '—'], ['Gegenereerd op:', vandaag],
   ];
   if (ondertitel) infoRijen.push(['Gebruiker:', ondertitel]);
 
-  doc.setFontSize(9);
-  doc.setTextColor(...donker);
+  doc.setFontSize(9); doc.setTextColor(...donker);
   infoRijen.forEach(([label, waarde]) => {
-    doc.setFont('helvetica', 'bold');
-    doc.text(label, margin, y);
-    doc.setFont('helvetica', 'normal');
-    doc.text(waarde, margin + 38, y);
+    doc.setFont('helvetica', 'bold'); doc.text(label, margin, y);
+    doc.setFont('helvetica', 'normal'); doc.text(waarde, margin + 38, y);
     y += 5.5;
   });
 
-  y += 2;
-  doc.setDrawColor(...groen);
-  doc.setLineWidth(0.6);
-  doc.line(margin, y, pageW - margin, y);
-  y += 5;
+  y += 2; doc.setDrawColor(...groen); doc.setLineWidth(0.6);
+  doc.line(margin, y, pageW - margin, y); y += 5;
 
-  // ---- DISCLAIMER ----
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'italic');
-  doc.setTextColor(...grijs);
+  doc.setFontSize(7); doc.setFont('helvetica', 'italic'); doc.setTextColor(...grijs);
   const disclaimer = 'Dit is een persoonlijk materiaaloverzicht, geen officieel keuringscertificaat. ' +
     'Het officiële certificaat is per e-mail verstuurd door uw keurmeester.';
   const discLines = doc.splitTextToSize(disclaimer, contentW);
   doc.text(discLines, margin, y);
   y += discLines.length * 3.2 + 5;
 
-  // ---- TABEL HEADER ----
-  const rowH   = 6.5;
-  const colW   = {
-    nr:        8,
-    omschr:    40,
-    merk:      22,
-    materiaal: 20,
-    sn:        28,
-    status:    20,
-    keuring:   25,
-    opmerking: 0,
-  };
+  const rowH = 6.5;
+  const colW = { nr: 8, omschr: 40, merk: 22, materiaal: 20, sn: 28, status: 20, keuring: 25, opmerking: 0 };
   colW.opmerking = contentW - colW.nr - colW.omschr - colW.merk - colW.materiaal - colW.sn - colW.status - colW.keuring;
 
-  doc.setFillColor(...groen);
-  doc.rect(margin, y, contentW, rowH, 'F');
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(255, 255, 255);
-
+  doc.setFillColor(...groen); doc.rect(margin, y, contentW, rowH, 'F');
+  doc.setFontSize(7); doc.setFont('helvetica', 'bold'); doc.setTextColor(255, 255, 255);
   let x = margin + 2;
-  doc.text('#',               x, y + 4.5); x += colW.nr;
-  doc.text('Omschrijving',    x, y + 4.5); x += colW.omschr;
-  doc.text('Merk',            x, y + 4.5); x += colW.merk;
-  doc.text('Materiaal',       x, y + 4.5); x += colW.materiaal;
-  doc.text('Serienummer',     x, y + 4.5); x += colW.sn;
-  doc.text('Status',          x, y + 4.5); x += colW.status;
-  doc.text('Volgende keuring', x, y + 4.5); x += colW.keuring;
-  doc.text('Opmerking',       x, y + 4.5);
+  doc.text('#', x, y+4.5); x += colW.nr;
+  doc.text('Omschrijving', x, y+4.5); x += colW.omschr;
+  doc.text('Merk', x, y+4.5); x += colW.merk;
+  doc.text('Materiaal', x, y+4.5); x += colW.materiaal;
+  doc.text('Serienummer', x, y+4.5); x += colW.sn;
+  doc.text('Status', x, y+4.5); x += colW.status;
+  doc.text('Volgende keuring', x, y+4.5); x += colW.keuring;
+  doc.text('Opmerking', x, y+4.5);
   y += rowH;
 
-  // ---- TABEL RIJEN ----
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-
+  doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5);
   items.forEach((item, i) => {
-    if (y + rowH > pageH - 14) {
-      doc.addPage();
-      y = margin;
-    }
-
-    if (i % 2 === 0) {
-      doc.setFillColor(245, 248, 242);
-      doc.rect(margin, y, contentW, rowH, 'F');
-    }
+    if (y + rowH > pageH - 14) { doc.addPage(); y = margin; }
+    if (i % 2 === 0) { doc.setFillColor(245, 248, 242); doc.rect(margin, y, contentW, rowH, 'F'); }
 
     const keuringDatum = item.keuring_datum || null;
-    const inGebruik    = item.in_gebruik || null;
-    const ks           = keuringStatus(inGebruik, keuringDatum);
-    const kt           = keuringTekst(ks, inGebruik, keuringDatum);
+    const inGebruik = item.in_gebruik || null;
+    const ks = keuringStatus(inGebruik, keuringDatum);
+    const kt = keuringTekst(ks, inGebruik, keuringDatum);
+    const statusTekst = item.status === 'goedgekeurd' ? 'Goedgekeurd' : item.status === 'afgekeurd' ? 'Afgekeurd' : '—';
 
-    const statusTekst = item.status === 'goedgekeurd' ? 'Goedgekeurd'
-      : item.status === 'afgekeurd' ? 'Afgekeurd'
-      : '—';
-
-    doc.setTextColor(...donker);
-    x = margin + 2;
-
+    doc.setTextColor(...donker); x = margin + 2;
     doc.setFontSize(7);
-    doc.text(String(i + 1), x, y + 4.5); x += colW.nr;
-
+    doc.text(String(i + 1), x, y+4.5); x += colW.nr;
     doc.setFont('helvetica', 'bold');
-    doc.text((item.omschrijving || '').substring(0, 22), x, y + 4.5);
-    doc.setFont('helvetica', 'normal');
-    x += colW.omschr;
+    doc.text((item.omschrijving || '').substring(0, 22), x, y+4.5);
+    doc.setFont('helvetica', 'normal'); x += colW.omschr;
+    doc.text((item.merk || '').substring(0, 14), x, y+4.5); x += colW.merk;
+    doc.text((item.materiaal || '').substring(0, 12), x, y+4.5); x += colW.materiaal;
+    doc.setFont('courier', 'normal'); doc.setFontSize(6);
+    doc.text((item.serienummer || '—').substring(0, 16), x, y+4.5);
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(7); x += colW.sn;
 
-    doc.text((item.merk || '').substring(0, 14), x, y + 4.5);
-    x += colW.merk;
-
-    doc.text((item.materiaal || '').substring(0, 12), x, y + 4.5);
-    x += colW.materiaal;
-
-    doc.setFont('courier', 'normal');
-    doc.setFontSize(6);
-    doc.text((item.serienummer || '—').substring(0, 16), x, y + 4.5);
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    x += colW.sn;
-
-    if (item.status === 'goedgekeurd')    doc.setTextColor(...groen);
+    if (item.status === 'goedgekeurd') doc.setTextColor(...groen);
     else if (item.status === 'afgekeurd') doc.setTextColor(...rood);
-    else                                  doc.setTextColor(...grijs);
-    doc.text(statusTekst, x, y + 4.5);
-    doc.setTextColor(...donker);
-    x += colW.status;
+    else doc.setTextColor(...grijs);
+    doc.text(statusTekst, x, y+4.5); doc.setTextColor(...donker); x += colW.status;
 
     if (kt) {
-      if (ks === 'overdue')    doc.setTextColor(...rood);
-      else if (ks === 'soon')  doc.setTextColor(...oranje);
-      else                     doc.setTextColor(...groen);
-      doc.setFontSize(6);
-      doc.text(kt.substring(0, 18), x, y + 4.5);
-      doc.setTextColor(...donker);
-      doc.setFontSize(7);
-    } else {
-      doc.setTextColor(...grijs);
-      doc.text('—', x, y + 4.5);
-      doc.setTextColor(...donker);
-    }
+      if (ks === 'overdue') doc.setTextColor(...rood);
+      else if (ks === 'soon') doc.setTextColor(...oranje);
+      else doc.setTextColor(...groen);
+      doc.setFontSize(6); doc.text(kt.substring(0, 18), x, y+4.5);
+      doc.setTextColor(...donker); doc.setFontSize(7);
+    } else { doc.setTextColor(...grijs); doc.text('—', x, y+4.5); doc.setTextColor(...donker); }
     x += colW.keuring;
 
     if (item.opmerking) {
-      doc.setFontSize(6);
-      doc.setTextColor(...oranje);
-      doc.text((item.opmerking || '').substring(0, 20), x, y + 4.5);
-      doc.setTextColor(...donker);
-      doc.setFontSize(7);
+      doc.setFontSize(6); doc.setTextColor(...oranje);
+      doc.text((item.opmerking || '').substring(0, 20), x, y+4.5);
+      doc.setTextColor(...donker); doc.setFontSize(7);
     }
 
-    doc.setDrawColor(...lichtgrijs);
-    doc.setLineWidth(0.2);
+    doc.setDrawColor(...lichtgrijs); doc.setLineWidth(0.2);
     doc.line(margin, y + rowH, pageW - margin, y + rowH);
     y += rowH;
   });
 
-  // ---- SAMENVATTING ----
   y += 4;
   const goed = items.filter(i => i.status === 'goedgekeurd').length;
-  const afk  = items.filter(i => i.status === 'afgekeurd').length;
-  const nodig = items.filter(i => {
-    const ks = keuringStatus(i.in_gebruik || null, i.keuring_datum || null);
-    return ks === 'overdue';
-  }).length;
+  const afk = items.filter(i => i.status === 'afgekeurd').length;
+  const nodig = items.filter(i => { const ks = keuringStatus(i.in_gebruik || null, i.keuring_datum || null); return ks === 'overdue'; }).length;
 
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(...donker);
-  doc.text(`${items.length} artikelen`, margin, y);
-  doc.setTextColor(...groen);
-  doc.text(`${goed} goedgekeurd`, margin + 30, y);
-  doc.setTextColor(...rood);
-  doc.text(`${afk} afgekeurd`, margin + 65, y);
-  if (nodig > 0) {
-    doc.setTextColor(...oranje);
-    doc.text(`${nodig} keuring nodig`, margin + 95, y);
-  }
+  doc.setFontSize(8); doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...donker); doc.text(`${items.length} artikelen`, margin, y);
+  doc.setTextColor(...groen); doc.text(`${goed} goedgekeurd`, margin + 30, y);
+  doc.setTextColor(...rood); doc.text(`${afk} afgekeurd`, margin + 65, y);
+  if (nodig > 0) { doc.setTextColor(...oranje); doc.text(`${nodig} keuring nodig`, margin + 95, y); }
 
-  // ---- FOOTER op alle pagina's ----
   const totaalPaginas = doc.internal.getNumberOfPages();
   for (let p = 1; p <= totaalPaginas; p++) {
-    doc.setPage(p);
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...grijs);
-    doc.text(
-      `${_klantNaam || ''} · Materiaaloverzicht · Gegenereerd ${vandaag} · Pagina ${p}/${totaalPaginas}`,
-      pageW / 2, pageH - 6, { align: 'center' }
-    );
-    doc.setDrawColor(...groen);
-    doc.setLineWidth(0.4);
-    doc.line(margin, pageH - 9, pageW - margin, pageH - 9);
+    doc.setPage(p); doc.setFontSize(7); doc.setFont('helvetica', 'normal'); doc.setTextColor(...grijs);
+    doc.text(`${_klantNaam || ''} · Materiaaloverzicht · Gegenereerd ${vandaag} · Pagina ${p}/${totaalPaginas}`, pageW / 2, pageH - 6, { align: 'center' });
+    doc.setDrawColor(...groen); doc.setLineWidth(0.4); doc.line(margin, pageH - 9, pageW - margin, pageH - 9);
   }
-
   return doc;
 }
 
@@ -1090,14 +912,11 @@ function _bouwPDF(items, ondertitel) {
 // PDF DOWNLOAD
 // ============================================================
 function downloadCertPDF() {
-  if (!_certData) {
-    bouwCertData();
-    if (!_certData) { toast('Geen keuringsdata beschikbaar', 'error'); return; }
-  }
+  if (!_certData) { bouwCertData(); if (!_certData) { toast('Geen keuringsdata beschikbaar', 'error'); return; } }
   if (typeof window.jspdf === 'undefined') { toast('PDF-bibliotheek nog niet geladen', 'error'); return; }
   const items = _certData.items;
   const doc = _bouwPDF(items, _actieveGebruiker || null);
-  const c   = _certData.certificaat;
+  const c = _certData.certificaat;
   const safeNaam = (_klantBedrijf || _klantNaam || 'overzicht').replace(/[^a-zA-Z0-9]/g, '_');
   const suffix = _actieveGebruiker ? '_' + _actieveGebruiker.replace(/[^a-zA-Z0-9]/g, '_') : '';
   doc.save(`Materiaaloverzicht_${safeNaam}${suffix}_${c.datum || ''}.pdf`);
@@ -1107,31 +926,21 @@ function downloadCertPDF() {
 function downloadCertPDFPerGebruiker() {
   if (!_certData) { toast('Geen keuringsdata beschikbaar', 'error'); return; }
   if (typeof window.jspdf === 'undefined') { toast('PDF-bibliotheek nog niet geladen', 'error'); return; }
-
   const groepen = {};
-  _certData.items.forEach(i => {
-    const g = i.gebruiker || 'Algemeen';
-    if (!groepen[g]) groepen[g] = [];
-    groepen[g].push(i);
-  });
-
+  _certData.items.forEach(i => { const g = i.gebruiker || 'Algemeen'; if (!groepen[g]) groepen[g] = []; groepen[g].push(i); });
   const gebruikers = Object.keys(groepen);
   const safeNaam = (_klantBedrijf || _klantNaam || 'overzicht').replace(/[^a-zA-Z0-9]/g, '_');
-  const c        = _certData.certificaat;
+  const c = _certData.certificaat;
 
   if (gebruikers.length <= 1) {
     const gebruiker = gebruikers[0] || 'Algemeen';
-    const doc  = _bouwPDF(_certData.items, gebruiker);
-    const safeG = gebruiker.replace(/[^a-zA-Z0-9]/g, '_');
-    doc.save(`Materiaaloverzicht_${safeNaam}_${safeG}_${c.datum || ''}.pdf`);
-    toast('Overzicht gedownload');
-    return;
+    const doc = _bouwPDF(_certData.items, gebruiker);
+    doc.save(`Materiaaloverzicht_${safeNaam}_${gebruiker.replace(/[^a-zA-Z0-9]/g, '_')}_${c.datum || ''}.pdf`);
+    toast('Overzicht gedownload'); return;
   }
-
   gebruikers.forEach(gebruiker => {
-    const doc  = _bouwPDF(groepen[gebruiker], gebruiker);
-    const safeG = gebruiker.replace(/[^a-zA-Z0-9]/g, '_');
-    doc.save(`Materiaaloverzicht_${safeNaam}_${safeG}_${c.datum || ''}.pdf`);
+    const doc = _bouwPDF(groepen[gebruiker], gebruiker);
+    doc.save(`Materiaaloverzicht_${safeNaam}_${gebruiker.replace(/[^a-zA-Z0-9]/g, '_')}_${c.datum || ''}.pdf`);
   });
   toast(`${gebruikers.length} overzichten gedownload`);
 }
@@ -1140,18 +949,11 @@ function downloadCertPDFPerGebruiker() {
 // OFFLINE DETECTIE
 // ============================================================
 window.addEventListener('offline', () => { el('offlineBar').classList.add('show'); });
-window.addEventListener('online', () => {
-  el('offlineBar').classList.remove('show');
-  toast('Verbinding hersteld', 'success');
-});
+window.addEventListener('online', () => { el('offlineBar').classList.remove('show'); toast('Verbinding hersteld', 'success'); });
 
 // ============================================================
 // KEYBOARD SHORTCUTS
 // ============================================================
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    sluitModal();
-    sluitToevoegModal();
-    sluitHistorieModal();
-  }
+  if (e.key === 'Escape') { sluitModal(); sluitToevoegModal(); sluitHistorieModal(); }
 });
