@@ -2,8 +2,11 @@
 
 // ============================================================
 // branding.js — Bedrijfsbranding laden en toepassen
-// Laadt kleuren en logo uit de bedrijven tabel in Supabase
-// en past ze toe via CSS custom properties
+// Laadt kleuren, logo en contactgegevens uit de bedrijven tabel
+// in Supabase en past ze toe via CSS custom properties.
+//
+// _keurBedrijfEmail en _keurBedrijfNaam worden gebruikt door de
+// "Keuring aanvragen" functie in ui.js.
 // ============================================================
 
 // Standaard kleuren (Safety Green) als fallback
@@ -13,13 +16,16 @@ const STANDAARD_KLEUREN = {
   kleur_accent:        '#8BC53F',
 };
 
+// Contactgegevens van het keuringsbedrijf — gevuld door laadBranding()
+let _keurBedrijfEmail = '';
+let _keurBedrijfNaam  = '';
+
 // ============================================================
 // Laad bedrijfsbranding op basis van bedrijf_id
 // Roep aan na inloggen, zodra bedrijf_id bekend is
 // ============================================================
 async function laadBranding(bedrijfId) {
   if (!bedrijfId) {
-    // Geen bedrijf_id — gebruik standaard kleuren
     pasKleurenToe(STANDAARD_KLEUREN);
     return;
   }
@@ -27,7 +33,7 @@ async function laadBranding(bedrijfId) {
   try {
     const { data, error } = await sb
       .from('bedrijven')
-      .select('naam, logo_url, kleur_primair, kleur_primair_donker, kleur_accent')
+      .select('naam, logo_url, kleur_primair, kleur_primair_donker, kleur_accent, email')
       .eq('id', bedrijfId)
       .maybeSingle();
 
@@ -57,6 +63,10 @@ async function laadBranding(bedrijfId) {
       if (headerSub) headerSub.textContent = data.naam;
     }
 
+    // Contactgegevens bewaren voor "Keuring aanvragen"
+    _keurBedrijfEmail = data.email || '';
+    _keurBedrijfNaam  = data.naam  || '';
+
   } catch (err) {
     console.error('Onverwachte fout bij branding laden:', err);
     pasKleurenToe(STANDAARD_KLEUREN);
@@ -80,13 +90,11 @@ function pasLogoToe(logoUrl) {
   const logoWrap = document.querySelector('.header-logo');
   if (!logoWrap) return;
 
-  // Zoek het SVG-element in de header en vervang het door een img
   const svgEl = logoWrap.querySelector('svg');
   if (svgEl) {
     const img = document.createElement('img');
     img.src = logoUrl;
     img.alt = 'Bedrijfslogo';
-    // CSS class .header-logo img is al gedefinieerd in style.css
     logoWrap.replaceChild(img, svgEl);
   }
 }
