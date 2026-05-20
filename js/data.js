@@ -43,9 +43,6 @@ async function laadArtikelen() {
     // Vertaal database-velden naar interne naamgeving
     _artikelen = (data || []).map(rij => ({
       id:           rij.id,
-      // ── ARTIKEL_ID FIX ──
-      // itemId = persistent artikel-ID voor historie
-      // Fallback naar rij.id voor oude data zonder artikel_id
       itemId:       rij.artikel_id || rij.id,
       omschrijving: rij.omschrijving || '',
       merk:         rij.merk || '',
@@ -64,9 +61,6 @@ async function laadArtikelen() {
       afgevoerd:    rij.afgevoerd || false,
     }));
 
-    // Artikelen direct renderen — keuringen zijn mogelijk nog niet geladen.
-    // renderArtikelen() wordt nogmaals aangeroepen vanuit laadKeuringen()
-    // zodra die klaar is, zodat de keuringdatum dan wel beschikbaar is.
     renderArtikelen();
 
   } catch (err) {
@@ -82,7 +76,6 @@ async function laadArtikelen() {
 async function slaArtikelOp(art) {
   const rij = {
     id:              art.id,
-    // ── ARTIKEL_ID FIX ── artikel_id meesturen
     artikel_id:      art.itemId || null,
     klant_id:        _klantId,
     bedrijf_id:      _bedrijfId,
@@ -113,7 +106,6 @@ async function slaArtikelOp(art) {
       toast('Fout bij opslaan', 'error');
       return false;
     }
-
     return true;
 
   } catch (err) {
@@ -125,8 +117,6 @@ async function slaArtikelOp(art) {
 
 // ============================================================
 // ARTIKEL AFVOEREN
-// Zet afgevoerd=true — artikel blijft in database en certificaten
-// maar verdwijnt uit de actieve lijst van de klant
 // ============================================================
 async function voerArtikelAf(id, reden) {
   try {
@@ -140,7 +130,6 @@ async function voerArtikelAf(id, reden) {
       toast('Fout bij afvoeren', 'error');
       return false;
     }
-
     return true;
 
   } catch (err) {
@@ -165,7 +154,6 @@ async function verwijderArtikelDb(id) {
       toast('Fout bij verwijderen', 'error');
       return false;
     }
-
     return true;
 
   } catch (err) {
@@ -176,10 +164,7 @@ async function verwijderArtikelDb(id) {
 }
 
 // ============================================================
-// KEURINGEN LADEN (2 queries, geen N+1 probleem)
-// Query 1: alle keuringen van deze klant
-// Query 2: alle keuring_items van die keuringen in één keer
-// Koppeling gebeurt in JavaScript
+// KEURINGEN LADEN
 // ============================================================
 async function laadKeuringen() {
   if (!_klantId) return;
@@ -236,7 +221,7 @@ async function laadKeuringen() {
 
     renderCertificaat();
     renderHistorie();
-    renderArtikelen(); // herrender nu _keuringen gevuld is — keuringdatum nu beschikbaar
+    renderArtikelen();
 
   } catch (err) {
     console.error('Onverwachte fout bij laden keuringen:', err);
@@ -246,15 +231,11 @@ async function laadKeuringen() {
 
 // ============================================================
 // HISTORIE PER ARTIKEL LADEN
-// Zoekt alle keuring_items met hetzelfde artikel_id,
-// haalt de bijbehorende keuring op voor datum en certificaatnr.
-// ── ARTIKEL_ID FIX ── Nieuw in klantapp
 // ============================================================
 async function laadArtikelHistorie(artikelId) {
   if (!artikelId) return [];
 
   try {
-    // Haal alle rijen op met dit artikel_id
     const { data: items, error: itemFout } = await sb
       .from('keuring_items')
       .select('*, keuringen(id, datum, certificaat_nr, keurmeester, afgerond)')
@@ -267,7 +248,6 @@ async function laadArtikelHistorie(artikelId) {
       return [];
     }
 
-    // Vertaal naar bruikbaar formaat, sorteer op datum (nieuwste eerst)
     const historie = (items || []).map(item => ({
       datum:         item.keuringen?.datum || '',
       certificaatNr: item.keuringen?.certificaat_nr || '—',
@@ -291,13 +271,10 @@ async function laadArtikelHistorie(artikelId) {
 
 // ============================================================
 // OPMERKING TOEVOEGEN AAN ARTIKEL
-// Slaat een opmerking op bij het meest recente keuring_item
-// van dit artikel. De keurmeester ziet dit bij de volgende keuring.
 // ============================================================
 async function slaOpmerkingOp(artikelId, opmerking) {
   if (!artikelId) return false;
 
-  // Zoek het meest recente item met dit artikel_id
   const artikel = _artikelen.find(a => a.itemId === artikelId);
   if (!artikel) return false;
 
@@ -313,7 +290,6 @@ async function slaOpmerkingOp(artikelId, opmerking) {
       return false;
     }
 
-    // Update lokaal
     artikel.opmerking = opmerking;
     return true;
 
@@ -334,14 +310,10 @@ function genId() {
 // ============================================================
 // KEURING STATUS BEREKENING
 //
-// De 12-maanden teller loopt vanaf de meest recente keuringdatum.
-// Als een artikel gekeurd is (keuringDatum aanwezig), overschrijft
-// die datum de inGebruik-datum als startpunt.
-//
 // Grenzen:
 //   < 11 maanden → 'ok'      (groen)
-//   11–12 maanden → 'soon'   (oranje — bijna tijd voor keuring)
-//   > 12 maanden → 'overdue' (rood — te laat)
+//   11–12 maanden → 'soon'   (oranje)
+//   > 12 maanden → 'overdue' (rood)
 // ============================================================
 function keuringStatus(inGebruik, keuringDatum) {
   const start = keuringDatum && keuringDatum > (inGebruik || '')
@@ -354,18 +326,22 @@ function keuringStatus(inGebruik, keuringDatum) {
   return 'ok';
 }
 
+// ── KEURINGTEKST ────────────────────────────────────────────
+// Geeft leesbare tekst terug ZONDER emoji/icoon.
+// De UI-laag (ui.js) voegt SVG-iconen toe op basis van de status.
+// ─────────────────────────────────────────────────────────────
 function keuringTekst(status, inGebruik, keuringDatum) {
   const start = keuringDatum && keuringDatum > (inGebruik || '')
     ? keuringDatum
     : inGebruik;
   if (!status || !start) return null;
   const maanden = Math.round((Date.now() - new Date(start + 'T00:00:00').getTime()) / (1000 * 60 * 60 * 24 * 30.44));
-  if (status === 'overdue') return `⚠ Keuring nodig (${maanden} mnd geleden)`;
+  if (status === 'overdue') return `Keuring nodig (${maanden} mnd geleden)`;
   if (status === 'soon') {
     const weken = Math.round((12 - maanden) * 4.35);
-    return `⏰ Keuring over ~${weken <= 0 ? '< 1' : weken} ${weken === 1 ? 'week' : 'weken'}`;
+    return `Keuring over ~${weken <= 0 ? '< 1' : weken} ${weken === 1 ? 'week' : 'weken'}`;
   }
-  return `✓ Keuring over ${12 - maanden} mnd`;
+  return `Keuring over ${12 - maanden} mnd`;
 }
 
 function formatDatum(d) {
