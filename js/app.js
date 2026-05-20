@@ -143,11 +143,12 @@ function verwerkUitlog() {
 }
 
 function toonFoutScherm(bericht) {
-  document.getElementById('authOverlay').style.display = 'none';
-  document.getElementById('wwOverlay').style.display   = 'none';
+  // Sessie opruimen — er is geen klantrecord, dus de app kan niet laden.
+  // Door uit te loggen keert het loginscherm terug en kan de gebruiker
+  // het opnieuw proberen met een ander e-mailadres.
   toast(bericht, 'error', 8000);
-  setBadge('err', '✗ Fout');
   console.error('Fout bij inloggen:', bericht);
+  sb.auth.signOut().then(() => verwerkUitlog());
 }
 
 function setBadge(type, tekst) {
