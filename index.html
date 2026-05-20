@@ -196,6 +196,9 @@
     </div>
   </div>
 
+  <!-- Keuring aanvragen knop — wordt getoond/verborgen door ui.js -->
+  <div id="keuringAanvraagContainer" style="display:none;margin-bottom:12px"></div>
+
   <!-- Zoekbalk + PDF knop -->
   <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
     <div style="position:relative;flex:1">
@@ -335,9 +338,9 @@
         <input class="form-input" id="fInGebruik" type="date">
       </div>
       <div class="form-group">
-        <label class="form-label">Gebruiker <span class="opt">optioneel</span></label>
+        <label class="form-label">Gebruiker / Functie <span class="opt">optioneel</span></label>
         <input class="form-input" id="fGebruiker"
-          placeholder="Naam of functie..." type="text" autocomplete="off">
+          placeholder="Bijv. Klimset Bram, Hoogwerker..." type="text" autocomplete="off">
       </div>
     </div>
 
@@ -436,8 +439,9 @@
         <input class="form-input" id="eInGebruik" type="date">
       </div>
       <div class="form-group">
-        <label class="form-label">Gebruiker</label>
-        <input class="form-input" id="eGebruiker" type="text">
+        <label class="form-label">Gebruiker / Functie</label>
+        <input class="form-input" id="eGebruiker" type="text"
+          placeholder="Bijv. Klimset Bram, Hoogwerker...">
       </div>
     </div>
 
