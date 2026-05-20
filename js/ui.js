@@ -4,7 +4,13 @@
 // ui.js — Klantapp UI: gebruiker-keuze, artikelkaartjes,
 //         klikbare statistieken, historie-modal, PDF
 //
-// Geen tabs meer — alles in één overzicht.
+// WIJZIGINGEN:
+//   ✓ Status-iconen: groen vinkje (goedgekeurd), rood kruis (afgekeurd)
+//     in plaats van alleen tekst-badges — dyslexievriendelijker
+//   ✓ Gebruiker / Functie: label verduidelijkt dat het veld ook
+//     voor functies zoals "Hoogwerker Bram" gebruikt kan worden
+//   ✓ Keuring aanvragen: mailto-knop met artikeloverzicht in de body,
+//     zichtbaar wanneer er artikelen zijn die keuring nodig hebben
 // ============================================================
 
 // ── STAAT ────────────────────────────────────────────────────
@@ -32,6 +38,26 @@ function toast(bericht, type = 'success', ms = 3000) {
     setTimeout(() => t.remove(), 300);
   }, ms);
 }
+
+// ── SVG ICOON HELPERS ───────────────────────────────────────
+// Kleine inline SVG's voor status-indicatie op artikelkaartjes.
+// Beter leesbaar dan tekst voor mensen met dyslexie.
+// ─────────────────────────────────────────────────────────────
+const _svgVinkje = `<svg viewBox="0 0 20 20" fill="none" width="14" height="14" style="vertical-align:-2px;flex-shrink:0"><circle cx="10" cy="10" r="10" fill="#3B6D11"/><path d="M6 10.5l2.5 2.5L14 7.5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+const _svgKruis = `<svg viewBox="0 0 20 20" fill="none" width="14" height="14" style="vertical-align:-2px;flex-shrink:0"><circle cx="10" cy="10" r="10" fill="#A32D2D"/><path d="M7 7l6 6M13 7l-6 6" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>`;
+
+const _svgNieuw = `<svg viewBox="0 0 20 20" fill="none" width="14" height="14" style="vertical-align:-2px;flex-shrink:0"><circle cx="10" cy="10" r="10" fill="#185FA5"/><path d="M10 6v4M10 14h.01" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>`;
+
+const _svgWaarschuwing = `<svg viewBox="0 0 16 16" fill="none" width="13" height="13" style="vertical-align:-2px;flex-shrink:0"><path d="M8 1L1 14h14L8 1z" fill="var(--danger,#c0392b)" stroke="var(--danger,#c0392b)" stroke-width="0.5"/><path d="M8 6v3.5M8 11.5h.01" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+
+const _svgKlok = `<svg viewBox="0 0 16 16" fill="none" width="13" height="13" style="vertical-align:-2px;flex-shrink:0"><circle cx="8" cy="8" r="7" fill="var(--warning,#e67e22)"/><path d="M8 4.5V8l2.5 1.5" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+const _svgOk = `<svg viewBox="0 0 16 16" fill="none" width="13" height="13" style="vertical-align:-2px;flex-shrink:0"><circle cx="8" cy="8" r="7" fill="var(--green,#5B9A2F)"/><path d="M5.5 8.5l1.5 1.5L10.5 6" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
+// Mail-icoon voor de "Keuring aanvragen" knop
+const _svgMail = `<svg viewBox="0 0 20 16" fill="none" width="15" height="12" style="vertical-align:-1px"><rect x="0.5" y="0.5" width="19" height="15" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M1 1l9 7 9-7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+
 
 // ============================================================
 // GEBRUIKER SELECTIE
@@ -220,7 +246,7 @@ function _artLijstClickHandler(event) {
 })();
 
 // ============================================================
-// HANDLEIDING OPENEN — nieuw tabblad naar de URL
+// HANDLEIDING OPENEN
 // ============================================================
 function openHandleiding(itemId) {
   const idx = _vindArtikelIndexOpItemId(itemId);
@@ -250,15 +276,21 @@ function renderArtikelen() {
 
   const totaal = gefilterdOpGebruiker.length;
   const goed   = gefilterdOpGebruiker.filter(a => a._effectieveStatus === 'goedgekeurd').length;
-  const nodig  = gefilterdOpGebruiker.filter(a => {
+
+  // ── Artikelen die keuring nodig hebben (voor stat-box + mailto) ──
+  const keuringNodigLijst = gefilterdOpGebruiker.filter(a => {
     if (a._effectieveStatus === 'afgekeurd') return false;
     const ks = keuringStatus(a.inGebruik, a._effectieveKeuringDatum);
     return ks === 'overdue' || ks === 'soon';
-  }).length;
+  });
+  const nodig = keuringNodigLijst.length;
 
   el('statTotaal').textContent  = totaal;
   el('statGoed').textContent    = goed;
   el('statKeuring').textContent = nodig;
+
+  // ── "Keuring aanvragen" knop tonen/verbergen ──────────────
+  _updateKeuringAanvraagKnop(keuringNodigLijst);
 
   let teTonenLijst = _toonAfgevoerd ? afgevoerd : gefilterdOpGebruiker;
 
@@ -294,7 +326,7 @@ function renderArtikelen() {
         <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
       </svg>
       <h3>Nog geen artikelen</h3>
-      <p>Voeg je eerste artikel toe via de knop hieronder.</p>
+      <p>Voeg je eerste artikel toe via de knop hierboven.</p>
     </div>`;
     _updateAfgevoerdToggle(afgevoerd.length);
     return;
@@ -313,31 +345,43 @@ function renderArtikelen() {
     return;
   }
 
+  // ── Kaartjes renderen ─────────────────────────────────────
   lijst.innerHTML = gesorteerd.map(art => {
     const itemId = art.itemId || art.id || '';
     const kd  = art._effectieveKeuringDatum;
     const ks  = art._effectieveStatus === 'afgekeurd' ? null : keuringStatus(art.inGebruik, kd);
     const kt  = ks ? keuringTekst(ks, art.inGebruik, kd) : null;
 
+    // ── Status badge MET icoon ──────────────────────────────
     let statusHtml = '';
     if (art._effectieveStatus === 'goedgekeurd') {
-      statusHtml = '<span style="background:#EAF3DE;color:#3B6D11;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500;white-space:nowrap">Goed</span>';
+      statusHtml = `<span style="display:inline-flex;align-items:center;gap:4px;background:#EAF3DE;color:#3B6D11;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500;white-space:nowrap">${_svgVinkje} Goed</span>`;
     } else if (art._effectieveStatus === 'afgekeurd') {
-      statusHtml = '<span style="background:#FCEBEB;color:#A32D2D;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500;white-space:nowrap">Afgekeurd</span>';
+      statusHtml = `<span style="display:inline-flex;align-items:center;gap:4px;background:#FCEBEB;color:#A32D2D;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500;white-space:nowrap">${_svgKruis} Afgekeurd</span>`;
     } else if (art._effectieveStatus === 'nieuw') {
-      statusHtml = '<span style="background:#E6F1FB;color:#185FA5;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500;white-space:nowrap">Nieuw</span>';
+      statusHtml = `<span style="display:inline-flex;align-items:center;gap:4px;background:#E6F1FB;color:#185FA5;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500;white-space:nowrap">${_svgNieuw} Nieuw</span>`;
     }
 
+    // ── Keuring regel MET icoon ─────────────────────────────
     let keuringHtml = '';
     if (kt) {
-      const kleur = ks === 'overdue' ? 'var(--danger,#c0392b)' :
-                    ks === 'soon'    ? 'var(--warning,#e67e22)' :
-                    'var(--green,#5B9A2F)';
-      keuringHtml = `<div style="font-size:12px;color:${kleur};margin-top:4px">${kt}</div>`;
+      let icoon = '';
+      let kleur = '';
+      if (ks === 'overdue') {
+        icoon = _svgWaarschuwing;
+        kleur = 'var(--danger,#c0392b)';
+      } else if (ks === 'soon') {
+        icoon = _svgKlok;
+        kleur = 'var(--warning,#e67e22)';
+      } else {
+        icoon = _svgOk;
+        kleur = 'var(--green,#5B9A2F)';
+      }
+      keuringHtml = `<div style="display:flex;align-items:center;gap:4px;font-size:12px;color:${kleur};margin-top:4px">${icoon} ${kt}</div>`;
     }
 
     const opmHtml = art.opmerking
-      ? `<div style="font-size:11px;color:var(--warning,#e67e22);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">⚠ ${esc(art.opmerking)}</div>`
+      ? `<div style="font-size:11px;color:var(--warning,#e67e22);margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_svgWaarschuwing} ${esc(art.opmerking)}</div>`
       : '';
 
     const details = [
@@ -352,7 +396,7 @@ function renderArtikelen() {
     const opacity = art.afgevoerd ? 'opacity:0.5;' : '';
     const itemIdAttr = esc(itemId);
 
-    // Handleiding knopje — alleen tonen als er een URL is
+    // Handleiding knopje
     const handleidingBtn = art.handleiding
       ? `<button type="button" data-action="handleiding" data-item-id="${itemIdAttr}" title="Handleiding openen" style="background:none;border:1px solid var(--border,#ddd);padding:4px 8px;border-radius:6px;font-size:12px;cursor:pointer;color:var(--green,#5B9A2F)">📄</button>`
       : '';
@@ -410,6 +454,102 @@ function _updateAfgevoerdToggle(aantalAfgevoerd) {
   } else {
     toggle.style.display = 'none';
   }
+}
+
+// ============================================================
+// KEURING AANVRAGEN — mailto met artikeloverzicht
+//
+// Toont een knop onder de statistieken wanneer er artikelen zijn
+// die keuring nodig hebben. Opent een mailto: link naar het
+// keuringsbedrijf met een overzicht van de betreffende artikelen.
+//
+// Later koppelbaar aan een planningstool via Supabase-verzoek.
+// ============================================================
+function _updateKeuringAanvraagKnop(keuringNodigLijst) {
+  const container = el('keuringAanvraagContainer');
+  if (!container) return;
+
+  if (keuringNodigLijst.length === 0 || !_keurBedrijfEmail) {
+    container.style.display = 'none';
+    container.innerHTML = '';
+    return;
+  }
+
+  container.style.display = 'block';
+  const n = keuringNodigLijst.length;
+  container.innerHTML = `
+    <button onclick="openKeuringMail()" style="
+      width:100%;padding:10px 14px;font-size:13px;font-weight:500;
+      background:rgba(192,57,43,0.08);border:1.5px solid var(--danger,#c0392b);
+      border-radius:var(--r,8px);color:var(--danger,#c0392b);
+      cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+      ${_svgMail}
+      Keuring aanvragen (${n} artikel${n !== 1 ? 'en' : ''})
+    </button>`;
+}
+
+function openKeuringMail() {
+  // Verzamel artikelen die keuring nodig hebben
+  const alleUniek = getUniekeArtikelenLijst();
+  const actief    = alleUniek.filter(a => !a.afgevoerd);
+  const gefilterd = _actieveGebruiker
+    ? actief.filter(a => gebruikerMatch(a.gebruiker, _actieveGebruiker))
+    : actief;
+
+  const nodigLijst = gefilterd.filter(a => {
+    if (a._effectieveStatus === 'afgekeurd') return false;
+    const ks = keuringStatus(a.inGebruik, a._effectieveKeuringDatum);
+    return ks === 'overdue' || ks === 'soon';
+  });
+
+  if (nodigLijst.length === 0) {
+    toast('Geen artikelen die keuring nodig hebben', 'error');
+    return;
+  }
+
+  // ── Onderwerp ─────────────────────────────────────────────
+  const klantLabel = _klantNaam || 'Klant';
+  const onderwerp = `Keuring aanvragen — ${klantLabel} (${nodigLijst.length} artikel${nodigLijst.length !== 1 ? 'en' : ''})`;
+
+  // ── Body: overzicht van artikelen ─────────────────────────
+  // Groepeer per materiaalsoort zodat de keurmeester in één
+  // oogopslag kan inschatten wat voor keuring het wordt.
+  const groepen = {};
+  nodigLijst.forEach(a => {
+    const type = a.materiaal || a.omschrijving || 'Overig';
+    if (!groepen[type]) groepen[type] = [];
+    groepen[type].push(a);
+  });
+
+  let artikelRegels = '';
+  Object.keys(groepen).sort().forEach(type => {
+    const items = groepen[type];
+    artikelRegels += `\n${type} (${items.length}x):\n`;
+    items.forEach(a => {
+      const delen = [a.omschrijving];
+      if (a.merk) delen.push(a.merk);
+      if (a.serienummer) delen.push('SN: ' + a.serienummer);
+      if (a.gebruiker) delen.push('Gebruiker: ' + a.gebruiker);
+      artikelRegels += `  - ${delen.join(' · ')}\n`;
+    });
+  });
+
+  // ── Link naar de klantapp (als beschikbaar) ───────────────
+  const appLink = window.location.href.split('?')[0];
+
+  const body = `Beste ${_keurBedrijfNaam || 'keurmeester'},\n\n` +
+    `Graag wil ik een keuring aanvragen voor de volgende ${nodigLijst.length} artikel${nodigLijst.length !== 1 ? 'en' : ''}:\n` +
+    artikelRegels +
+    `\nKunt u een afspraak inplannen?\n\n` +
+    `Bekijk het volledige overzicht: ${appLink}\n\n` +
+    `Met vriendelijke groet,\n${klantLabel}`;
+
+  // ── Mailto openen ─────────────────────────────────────────
+  const mailto = `mailto:${encodeURIComponent(_keurBedrijfEmail)}` +
+    `?subject=${encodeURIComponent(onderwerp)}` +
+    `&body=${encodeURIComponent(body)}`;
+
+  window.location.href = mailto;
 }
 
 // ============================================================
@@ -530,8 +670,6 @@ function openEdit(itemId) {
   el('eInGebruik').value = a.inGebruik || '';
   el('eGebruiker').value = a.gebruiker || '';
 
-  // Handleiding-URL bewaren op het omschrijving-veld zodat
-  // een autocomplete-keuze deze kan overschrijven
   el('eOmschr').dataset.handleiding = a.handleiding || '';
 
   const naam = _klantNaam || 'Klant';
@@ -575,8 +713,6 @@ async function slaEditOp() {
   const gekoppeld = !!a.keuringId;
   const opmerking = el('eOpmerking').value.trim();
 
-  // Handleiding: als autocomplete een nieuwe URL heeft gezet, gebruik die.
-  // Anders: behoud de bestaande waarde.
   const nieuweHandleiding = el('eOmschr').dataset.handleiding;
   const handleiding = (nieuweHandleiding !== undefined && nieuweHandleiding !== '')
     ? nieuweHandleiding
@@ -695,12 +831,13 @@ async function openHistorie(artikelId) {
     return;
   }
 
+  // ── Historie kaartjes MET status-iconen ────────────────────
   inhoud.innerHTML = historie.map((r, idx) => {
     let statusHtml = '';
     if (r.status === 'goedgekeurd') {
-      statusHtml = '<span style="background:#EAF3DE;color:#3B6D11;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500">Goedgekeurd</span>';
+      statusHtml = `<span style="display:inline-flex;align-items:center;gap:4px;background:#EAF3DE;color:#3B6D11;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500">${_svgVinkje} Goedgekeurd</span>`;
     } else if (r.status === 'afgekeurd') {
-      statusHtml = `<span style="background:#FCEBEB;color:#A32D2D;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500">Afgekeurd${r.afkeurcode ? ' — ' + esc(r.afkeurcode) : ''}</span>`;
+      statusHtml = `<span style="display:inline-flex;align-items:center;gap:4px;background:#FCEBEB;color:#A32D2D;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500">${_svgKruis} Afgekeurd${r.afkeurcode ? ' — ' + esc(r.afkeurcode) : ''}</span>`;
     } else {
       statusHtml = '<span style="background:#FAEEDA;color:#854F0B;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500">Onbeoordeeld</span>';
     }
@@ -721,7 +858,7 @@ async function openHistorie(artikelId) {
       <div style="font-size:12px;color:var(--text-secondary,#666)">
         Keurmeester: ${esc(r.keurmeester)}${r.gebruiker ? ' · Gebruiker: ' + esc(r.gebruiker) : ''}
       </div>
-      ${r.opmerking ? `<div style="font-size:12px;color:var(--warning,#e67e22);margin-top:4px">⚠ ${esc(r.opmerking)}</div>` : ''}
+      ${r.opmerking ? `<div style="display:flex;align-items:center;gap:4px;font-size:12px;color:var(--warning,#e67e22);margin-top:4px">${_svgWaarschuwing} ${esc(r.opmerking)}</div>` : ''}
     </div>`;
   }).join('');
 }
