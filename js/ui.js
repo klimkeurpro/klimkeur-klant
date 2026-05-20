@@ -104,6 +104,12 @@ function toonGebruikerKeuze() {
     return;
   }
 
+  // Bij 1 gebruiker: direct selecteren, geen keuzescherm nodig
+  if (gebruikers.length === 1) {
+    kiesGebruiker(gebruikers[0]);
+    return;
+  }
+
   lijst.innerHTML =
     `<button onclick="kiesGebruiker(null)" style="padding:12px 16px;border:1.5px solid var(--green);border-radius:var(--r);background:rgba(91,154,47,0.08);color:var(--green);font-size:15px;font-weight:500;cursor:pointer;text-align:left;display:flex;align-items:center;gap:10px;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
