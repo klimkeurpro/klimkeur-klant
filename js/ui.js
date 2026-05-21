@@ -514,9 +514,11 @@ function openKeuringMail() {
   }
 
   // ── Onderwerp ─────────────────────────────────────────────
-  const klantLabel = _klantNaam || 'Klant';
+  // De keurmeester kent de klant op bedrijfsnaam, niet op contactpersoon
+  const bedrijfLabel = _klantBedrijf || _klantNaam || 'Klant';
+  const contactLabel = _klantNaam || '';
   const totaal = nodigLijst.length;
-  const onderwerp = `Keuring aanvragen — ${klantLabel} (${totaal} artikel${totaal !== 1 ? 'en' : ''})`;
+  const onderwerp = `Keuring aanvragen — ${bedrijfLabel} (${totaal} artikel${totaal !== 1 ? 'en' : ''})`;
 
   // ── Body: compact overzicht per materiaalsoort ────────────
   // De keurmeester wil in één oogopslag zien: wat en hoeveel.
@@ -532,11 +534,17 @@ function openKeuringMail() {
     .map(type => `  - ${tellingen[type]}x ${type}`)
     .join('\n');
 
+  // Afsluiting: bedrijfsnaam, en indien anders de contactpersoon eronder
+  let afsluiting = bedrijfLabel;
+  if (contactLabel && contactLabel !== bedrijfLabel) {
+    afsluiting = `${contactLabel}\n${bedrijfLabel}`;
+  }
+
   const body = `Beste ${_keurBedrijfNaam || 'keurmeester'},\n\n` +
     `Graag wil ik een keuring aanvragen voor ${totaal} artikel${totaal !== 1 ? 'en' : ''}:\n\n` +
     overzichtRegels + '\n\n' +
     `Kunt u een afspraak inplannen?\n\n` +
-    `Met vriendelijke groet,\n${klantLabel}`;
+    `Met vriendelijke groet,\n${afsluiting}`;
 
   // ── Mailto openen ─────────────────────────────────────────
   const mailto = `mailto:${encodeURIComponent(_keurBedrijfEmail)}` +
