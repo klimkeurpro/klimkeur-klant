@@ -70,9 +70,10 @@ async function verwerkInlog(user) {
     return;
   }
 
-  _klantId   = klant.id;
-  _klantNaam    =klant.contactpersoon || klant.bedrijf || '';
-  _bedrijfId = klant.bedrijf_id || null;
+  _klantId      = klant.id;
+  _klantNaam    = klant.contactpersoon || klant.bedrijf || '';
+  _klantBedrijf = klant.bedrijf || '';
+  _bedrijfId    = klant.bedrijf_id || null;
 
   const logoutBtn = document.getElementById('logoutBtn');
   if (logoutBtn) logoutBtn.style.display = 'flex';
