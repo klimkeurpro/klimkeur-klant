@@ -515,39 +515,27 @@ function openKeuringMail() {
 
   // ── Onderwerp ─────────────────────────────────────────────
   const klantLabel = _klantNaam || 'Klant';
-  const onderwerp = `Keuring aanvragen — ${klantLabel} (${nodigLijst.length} artikel${nodigLijst.length !== 1 ? 'en' : ''})`;
+  const totaal = nodigLijst.length;
+  const onderwerp = `Keuring aanvragen — ${klantLabel} (${totaal} artikel${totaal !== 1 ? 'en' : ''})`;
 
-  // ── Body: overzicht van artikelen ─────────────────────────
-  // Groepeer per materiaalsoort zodat de keurmeester in één
-  // oogopslag kan inschatten wat voor keuring het wordt.
-  const groepen = {};
+  // ── Body: compact overzicht per materiaalsoort ────────────
+  // De keurmeester wil in één oogopslag zien: wat en hoeveel.
+  // Bijv. "4x Klimlijn, 3x Harnas, 2x Helm"
+  const tellingen = {};
   nodigLijst.forEach(a => {
     const type = a.materiaal || a.omschrijving || 'Overig';
-    if (!groepen[type]) groepen[type] = [];
-    groepen[type].push(a);
+    tellingen[type] = (tellingen[type] || 0) + 1;
   });
 
-  let artikelRegels = '';
-  Object.keys(groepen).sort().forEach(type => {
-    const items = groepen[type];
-    artikelRegels += `\n${type} (${items.length}x):\n`;
-    items.forEach(a => {
-      const delen = [a.omschrijving];
-      if (a.merk) delen.push(a.merk);
-      if (a.serienummer) delen.push('SN: ' + a.serienummer);
-      if (a.gebruiker) delen.push('Gebruiker: ' + a.gebruiker);
-      artikelRegels += `  - ${delen.join(' · ')}\n`;
-    });
-  });
-
-  // ── Link naar de klantapp (als beschikbaar) ───────────────
-  const appLink = window.location.href.split('?')[0];
+  const overzichtRegels = Object.keys(tellingen)
+    .sort()
+    .map(type => `  - ${tellingen[type]}x ${type}`)
+    .join('\n');
 
   const body = `Beste ${_keurBedrijfNaam || 'keurmeester'},\n\n` +
-    `Graag wil ik een keuring aanvragen voor de volgende ${nodigLijst.length} artikel${nodigLijst.length !== 1 ? 'en' : ''}:\n` +
-    artikelRegels +
-    `\nKunt u een afspraak inplannen?\n\n` +
-    `Bekijk het volledige overzicht: ${appLink}\n\n` +
+    `Graag wil ik een keuring aanvragen voor ${totaal} artikel${totaal !== 1 ? 'en' : ''}:\n\n` +
+    overzichtRegels + '\n\n' +
+    `Kunt u een afspraak inplannen?\n\n` +
     `Met vriendelijke groet,\n${klantLabel}`;
 
   // ── Mailto openen ─────────────────────────────────────────
