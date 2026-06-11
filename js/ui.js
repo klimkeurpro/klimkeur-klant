@@ -975,7 +975,7 @@ function _bouwPDF(items, ondertitel) {
   doc.text('Materiaal', x, y+4.5); x += colW.materiaal;
   doc.text('Serienummer', x, y+4.5); x += colW.sn;
   doc.text('Status', x, y+4.5); x += colW.status;
-  doc.text('Volgende keuring', x, y+4.5); x += colW.keuring;
+  doc.text('Keuring geldig tot', x, y+4.5); x += colW.keuring;
   doc.text('Opmerking', x, y+4.5);
   y += rowH;
 
@@ -984,10 +984,14 @@ function _bouwPDF(items, ondertitel) {
     if (y + rowH > pageH - 14) { doc.addPage(); y = margin; }
     if (i % 2 === 0) { doc.setFillColor(245, 248, 242); doc.rect(margin, y, contentW, rowH, 'F'); }
 
-    const keuringDatum = item.keuring_datum || null;
-    const inGebruik = item.in_gebruik || null;
-    const ks = keuringStatus(inGebruik, keuringDatum);
-    const kt = keuringTekst(ks, inGebruik, keuringDatum);
+    // Geldigheid = keuringsdatum + 12 maanden. Items hebben zelf geen
+    // keuringsdatum; die staat op de keuring (certificaat) zelf.
+    const basisDatum = item.keuring_datum || c.datum || null;
+    let geldigTot = null;
+    if (item.status === 'goedgekeurd' && basisDatum) {
+      geldigTot = new Date(basisDatum + (basisDatum.includes('T') ? '' : 'T00:00:00'));
+      geldigTot.setFullYear(geldigTot.getFullYear() + 1);
+    }
     const statusTekst = item.status === 'goedgekeurd' ? 'Goedgekeurd' : item.status === 'afgekeurd' ? 'Afgekeurd' : '—';
 
     doc.setTextColor(...donker); x = margin + 2;
@@ -1007,12 +1011,16 @@ function _bouwPDF(items, ondertitel) {
     else doc.setTextColor(...grijs);
     doc.text(statusTekst, x, y+4.5); doc.setTextColor(...donker); x += colW.status;
 
-    if (kt) {
-      if (ks === 'overdue') doc.setTextColor(...rood);
-      else if (ks === 'soon') doc.setTextColor(...oranje);
+    if (geldigTot) {
+      const nu = Date.now();
+      const dagenOver = (geldigTot.getTime() - nu) / (1000 * 60 * 60 * 24);
+      if (dagenOver < 0) doc.setTextColor(...rood);
+      else if (dagenOver <= 30) doc.setTextColor(...oranje);
       else doc.setTextColor(...groen);
-      doc.setFontSize(6); doc.text(kt.substring(0, 18), x, y+4.5);
-      doc.setTextColor(...donker); doc.setFontSize(7);
+      const dd = String(geldigTot.getDate()).padStart(2, '0');
+      const mm = String(geldigTot.getMonth() + 1).padStart(2, '0');
+      doc.text(`${dd}-${mm}-${geldigTot.getFullYear()}`, x, y+4.5);
+      doc.setTextColor(...donker);
     } else { doc.setTextColor(...grijs); doc.text('—', x, y+4.5); doc.setTextColor(...donker); }
     x += colW.keuring;
 
@@ -1030,7 +1038,13 @@ function _bouwPDF(items, ondertitel) {
   y += 4;
   const goed = items.filter(i => i.status === 'goedgekeurd').length;
   const afk = items.filter(i => i.status === 'afgekeurd').length;
-  const nodig = items.filter(i => { const ks = keuringStatus(i.in_gebruik || null, i.keuring_datum || null); return ks === 'overdue'; }).length;
+  const nodig = items.filter(i => {
+    const basis = i.keuring_datum || c.datum || null;
+    if (i.status !== 'goedgekeurd' || !basis) return false;
+    const d = new Date(basis + (basis.includes('T') ? '' : 'T00:00:00'));
+    d.setFullYear(d.getFullYear() + 1);
+    return d.getTime() < Date.now();
+  }).length;
 
   doc.setFontSize(8); doc.setFont('helvetica', 'bold');
   doc.setTextColor(...donker); doc.text(`${items.length} artikelen`, margin, y);
