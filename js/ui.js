@@ -564,6 +564,12 @@ function toggleToevoegForm() {
   if (fGebruiker && _actieveGebruiker && !fGebruiker.value) {
     fGebruiker.value = _actieveGebruiker;
   }
+  // Ingebruikname standaard op vandaag: vanaf deze datum telt 12 maanden
+  // tot de eerste keuring.
+  const fInGebruik = el('fInGebruik');
+  if (fInGebruik && !fInGebruik.value) {
+    fInGebruik.value = new Date().toISOString().slice(0, 10);
+  }
   setTimeout(() => el('fOmschr')?.focus(), 100);
 }
 
@@ -590,6 +596,7 @@ async function voegToe() {
   const omschr = el('fOmschr').value.trim();
   const sn     = el('fSN').value.trim();
   if (!omschr) { toast('Vul een omschrijving in', 'error'); el('fOmschr').focus(); return; }
+  if (!el('fInGebruik').value) { toast('Vul de ingebruikname-datum in', 'error'); el('fInGebruik').focus(); return; }
 
   const uniek = getUniekeArtikelenLijst();
   if (sn && uniek.some(a => a.serienummer && a.serienummer.toLowerCase() === sn.toLowerCase())) {
@@ -917,7 +924,7 @@ function switchTab() { /* niet meer nodig */ }
 // ============================================================
 function _bouwPDF(items, ondertitel) {
   const { jsPDF } = window.jspdf;
-  const c          = _certData.certificaat;
+  const c          = (_certData && _certData.certificaat) || {};
   const vandaag    = new Date().toLocaleDateString('nl-NL');
   const doc        = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const pageW      = doc.internal.pageSize.getWidth();
@@ -985,14 +992,17 @@ function _bouwPDF(items, ondertitel) {
     if (y + rowH > pageH - 14) { doc.addPage(); y = margin; }
     if (i % 2 === 0) { doc.setFillColor(245, 248, 242); doc.rect(margin, y, contentW, rowH, 'F'); }
 
-    // Geldigheid = laatste keuringsdatum van dít artikel + 12 maanden.
-    const basisDatum = item.keuring_datum || null;
+    // Geldigheid: gekeurd → laatste keuringsdatum + 12 maanden,
+    // nog niet gekeurd → ingebruikname + 12 maanden.
+    const basisDatum = item.status === 'goedgekeurd' ? (item.keuring_datum || null)
+                     : item.status === 'afgekeurd'   ? null
+                     : (item.in_gebruik || null);
     let geldigTot = null;
-    if (item.status === 'goedgekeurd' && basisDatum) {
+    if (basisDatum) {
       geldigTot = new Date(basisDatum + (basisDatum.includes('T') ? '' : 'T00:00:00'));
       geldigTot.setFullYear(geldigTot.getFullYear() + 1);
     }
-    const statusTekst = item.status === 'goedgekeurd' ? 'Goedgekeurd' : item.status === 'afgekeurd' ? 'Afgekeurd' : '—';
+    const statusTekst = item.status === 'goedgekeurd' ? 'Goedgekeurd' : item.status === 'afgekeurd' ? 'Afgekeurd' : 'Niet gekeurd';
 
     doc.setTextColor(...donker); x = margin + 2;
     doc.setFontSize(7);
@@ -1039,8 +1049,9 @@ function _bouwPDF(items, ondertitel) {
   const goed = items.filter(i => i.status === 'goedgekeurd').length;
   const afk = items.filter(i => i.status === 'afgekeurd').length;
   const nodig = items.filter(i => {
-    const basis = i.keuring_datum || null;
-    if (i.status !== 'goedgekeurd' || !basis) return false;
+    if (i.status === 'afgekeurd') return false;
+    const basis = i.status === 'goedgekeurd' ? (i.keuring_datum || null) : (i.in_gebruik || null);
+    if (!basis) return false;
     const d = new Date(basis + (basis.includes('T') ? '' : 'T00:00:00'));
     d.setFullYear(d.getFullYear() + 1);
     return d.getTime() < Date.now();
@@ -1064,31 +1075,36 @@ function _bouwPDF(items, ondertitel) {
 // ============================================================
 // PDF DOWNLOAD
 //
-// Het overzicht bevat AL het gekeurde materiaal van de klant
+// Het overzicht bevat AL het actieve materiaal van de klant
 // (niet alleen de laatste keuring), zonder afgevoerde artikelen.
-// Per artikel geldt de laatste eigen keuringsdatum.
+// Ook zelf toegevoegde, nog niet gekeurde artikelen tellen mee;
+// hun keuringstermijn loopt vanaf de ingebruikname-datum.
 // ============================================================
 function _pdfItems() {
   return getUniekeArtikelenLijst()
-    .filter(a => !a.afgevoerd && (a._effectieveStatus === 'goedgekeurd' || a._effectieveStatus === 'afgekeurd'))
+    .filter(a => !a.afgevoerd)
     .sort((a, b) => (a.omschrijving || '').localeCompare(b.omschrijving || '', 'nl'))
-    .map(a => ({
-      omschrijving:  a.omschrijving,
-      merk:          a.merk,
-      materiaal:     a.materiaal,
-      serienummer:   a.serienummer,
-      opmerking:     a.opmerking,
-      gebruiker:     a.gebruiker,
-      status:        a._effectieveStatus,
-      keuring_datum: a._effectieveKeuringDatum,
-    }));
+    .map(a => {
+      const gekeurd = a._effectieveStatus === 'goedgekeurd' || a._effectieveStatus === 'afgekeurd';
+      return {
+        omschrijving:  a.omschrijving,
+        merk:          a.merk,
+        materiaal:     a.materiaal,
+        serienummer:   a.serienummer,
+        opmerking:     a.opmerking,
+        gebruiker:     a.gebruiker,
+        status:        gekeurd ? a._effectieveStatus : 'niet_gekeurd',
+        keuring_datum: a._effectieveKeuringDatum,
+        in_gebruik:    a.inGebruik || null,
+      };
+    });
 }
 
 function downloadCertPDF() {
-  if (!_certData) { bouwCertData(); if (!_certData) { toast('Geen keuringsdata beschikbaar', 'error'); return; } }
+  if (!_certData) bouwCertData(); // mag null blijven: ook zonder keuring is er een overzicht
   if (typeof window.jspdf === 'undefined') { toast('PDF-bibliotheek nog niet geladen', 'error'); return; }
   const items = _pdfItems();
-  if (items.length === 0) { toast('Geen gekeurde artikelen gevonden', 'error'); return; }
+  if (items.length === 0) { toast('Geen artikelen gevonden', 'error'); return; }
   const doc = _bouwPDF(items, _actieveGebruiker || null);
   const safeNaam = (_klantBedrijf || _klantNaam || 'overzicht').replace(/[^a-zA-Z0-9]/g, '_');
   const suffix = _actieveGebruiker ? '_' + _actieveGebruiker.replace(/[^a-zA-Z0-9]/g, '_') : '';
@@ -1098,10 +1114,10 @@ function downloadCertPDF() {
 }
 
 function downloadCertPDFPerGebruiker() {
-  if (!_certData) { bouwCertData(); if (!_certData) { toast('Geen keuringsdata beschikbaar', 'error'); return; } }
+  if (!_certData) bouwCertData(); // mag null blijven: ook zonder keuring is er een overzicht
   if (typeof window.jspdf === 'undefined') { toast('PDF-bibliotheek nog niet geladen', 'error'); return; }
   const alleItems = _pdfItems();
-  if (alleItems.length === 0) { toast('Geen gekeurde artikelen gevonden', 'error'); return; }
+  if (alleItems.length === 0) { toast('Geen artikelen gevonden', 'error'); return; }
   const groepen = {};
   alleItems.forEach(i => { const g = i.gebruiker || 'Algemeen'; if (!groepen[g]) groepen[g] = []; groepen[g].push(i); });
   const gebruikers = Object.keys(groepen);
