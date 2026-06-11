@@ -940,8 +940,8 @@ function _bouwPDF(items, ondertitel) {
   y = 30;
 
   const infoRijen = [
-    ['Eigenaar:', _klantNaam || '—'], ['Keuringsdatum:', c.datum ? formatDatum(c.datum) : '—'],
-    ['Keurmeester:', c.keurmeester || '—'], ['Op certificaat:', c.nr || '—'], ['Gegenereerd op:', vandaag],
+    ['Eigenaar:', _klantNaam || '—'], ['Laatste keuring:', c.datum ? formatDatum(c.datum) : '—'],
+    ['Keurmeester:', c.keurmeester || '—'], ['Laatste certificaat:', c.nr || '—'], ['Gegenereerd op:', vandaag],
   ];
   if (ondertitel) infoRijen.push(['Gebruiker:', ondertitel]);
 
@@ -984,9 +984,8 @@ function _bouwPDF(items, ondertitel) {
     if (y + rowH > pageH - 14) { doc.addPage(); y = margin; }
     if (i % 2 === 0) { doc.setFillColor(245, 248, 242); doc.rect(margin, y, contentW, rowH, 'F'); }
 
-    // Geldigheid = keuringsdatum + 12 maanden. Items hebben zelf geen
-    // keuringsdatum; die staat op de keuring (certificaat) zelf.
-    const basisDatum = item.keuring_datum || c.datum || null;
+    // Geldigheid = laatste keuringsdatum van dít artikel + 12 maanden.
+    const basisDatum = item.keuring_datum || null;
     let geldigTot = null;
     if (item.status === 'goedgekeurd' && basisDatum) {
       geldigTot = new Date(basisDatum + (basisDatum.includes('T') ? '' : 'T00:00:00'));
@@ -1039,7 +1038,7 @@ function _bouwPDF(items, ondertitel) {
   const goed = items.filter(i => i.status === 'goedgekeurd').length;
   const afk = items.filter(i => i.status === 'afgekeurd').length;
   const nodig = items.filter(i => {
-    const basis = i.keuring_datum || c.datum || null;
+    const basis = i.keuring_datum || null;
     if (i.status !== 'goedgekeurd' || !basis) return false;
     const d = new Date(basis + (basis.includes('T') ? '' : 'T00:00:00'));
     d.setFullYear(d.getFullYear() + 1);
@@ -1063,37 +1062,60 @@ function _bouwPDF(items, ondertitel) {
 
 // ============================================================
 // PDF DOWNLOAD
+//
+// Het overzicht bevat AL het gekeurde materiaal van de klant
+// (niet alleen de laatste keuring), zonder afgevoerde artikelen.
+// Per artikel geldt de laatste eigen keuringsdatum.
 // ============================================================
+function _pdfItems() {
+  return getUniekeArtikelenLijst()
+    .filter(a => !a.afgevoerd && (a._effectieveStatus === 'goedgekeurd' || a._effectieveStatus === 'afgekeurd'))
+    .sort((a, b) => (a.omschrijving || '').localeCompare(b.omschrijving || '', 'nl'))
+    .map(a => ({
+      omschrijving:  a.omschrijving,
+      merk:          a.merk,
+      materiaal:     a.materiaal,
+      serienummer:   a.serienummer,
+      opmerking:     a.opmerking,
+      gebruiker:     a.gebruiker,
+      status:        a._effectieveStatus,
+      keuring_datum: a._effectieveKeuringDatum,
+    }));
+}
+
 function downloadCertPDF() {
   if (!_certData) { bouwCertData(); if (!_certData) { toast('Geen keuringsdata beschikbaar', 'error'); return; } }
   if (typeof window.jspdf === 'undefined') { toast('PDF-bibliotheek nog niet geladen', 'error'); return; }
-  const items = _certData.items;
+  const items = _pdfItems();
+  if (items.length === 0) { toast('Geen gekeurde artikelen gevonden', 'error'); return; }
   const doc = _bouwPDF(items, _actieveGebruiker || null);
-  const c = _certData.certificaat;
   const safeNaam = (_klantBedrijf || _klantNaam || 'overzicht').replace(/[^a-zA-Z0-9]/g, '_');
   const suffix = _actieveGebruiker ? '_' + _actieveGebruiker.replace(/[^a-zA-Z0-9]/g, '_') : '';
-  doc.save(`Materiaaloverzicht_${safeNaam}${suffix}_${c.datum || ''}.pdf`);
+  const datum = new Date().toISOString().slice(0, 10);
+  doc.save(`Materiaaloverzicht_${safeNaam}${suffix}_${datum}.pdf`);
   toast('Overzicht gedownload');
 }
 
 function downloadCertPDFPerGebruiker() {
-  if (!_certData) { toast('Geen keuringsdata beschikbaar', 'error'); return; }
+  if (!_certData) { bouwCertData(); if (!_certData) { toast('Geen keuringsdata beschikbaar', 'error'); return; } }
   if (typeof window.jspdf === 'undefined') { toast('PDF-bibliotheek nog niet geladen', 'error'); return; }
+  const alleItems = _pdfItems();
+  if (alleItems.length === 0) { toast('Geen gekeurde artikelen gevonden', 'error'); return; }
   const groepen = {};
-  _certData.items.forEach(i => { const g = i.gebruiker || 'Algemeen'; if (!groepen[g]) groepen[g] = []; groepen[g].push(i); });
+  alleItems.forEach(i => { const g = i.gebruiker || 'Algemeen'; if (!groepen[g]) groepen[g] = []; groepen[g].push(i); });
   const gebruikers = Object.keys(groepen);
   const safeNaam = (_klantBedrijf || _klantNaam || 'overzicht').replace(/[^a-zA-Z0-9]/g, '_');
-  const c = _certData.certificaat;
+  const datum = new Date().toISOString().slice(0, 10);
 
   if (gebruikers.length <= 1) {
     const gebruiker = gebruikers[0] || 'Algemeen';
-    const doc = _bouwPDF(_certData.items, gebruiker);
-    doc.save(`Materiaaloverzicht_${safeNaam}_${gebruiker.replace(/[^a-zA-Z0-9]/g, '_')}_${c.datum || ''}.pdf`);
+    const doc = _bouwPDF(alleItems, gebruiker);
+    doc.save(`Materiaaloverzicht_${safeNaam}_${gebruiker.replace(/[^a-zA-Z0-9]/g, '_')}_${datum}.pdf`);
     toast('Overzicht gedownload'); return;
   }
   gebruikers.forEach(gebruiker => {
     const doc = _bouwPDF(groepen[gebruiker], gebruiker);
-    doc.save(`Materiaaloverzicht_${safeNaam}_${gebruiker.replace(/[^a-zA-Z0-9]/g, '_')}_${c.datum || ''}.pdf`);
+    doc.save(`Materiaaloverzicht_${safeNaam}_${gebruiker.replace(/[^a-zA-Z0-9]/g, '_')}_${datum}.pdf`);
   });
   toast(`${gebruikers.length} overzichten gedownload`);
 }
