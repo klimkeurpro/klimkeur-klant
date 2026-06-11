@@ -37,7 +37,7 @@ async function afhandelenAuthEvent(event, sessie) {
 
     try {
       _verwerkBezig = true;
-      console.log('verwerkInlog START voor', sessie.user.email);
+      console.log('verwerkInlog START');
       await verwerkInlog(sessie.user);
       _appGeladen = true;
       console.log('verwerkInlog KLAAR');
@@ -88,6 +88,7 @@ async function verwerkInlog(user) {
 
   document.getElementById('authOverlay').style.display = 'none';
   document.getElementById('wwOverlay').style.display   = 'none';
+  document.getElementById('laadOverlay').style.display = 'none';
 
   setBadge('ok', '✓ Verbonden');
 
@@ -124,6 +125,7 @@ function verwerkUitlog() {
 
   document.getElementById('authOverlay').style.display = 'flex';
   document.getElementById('wwOverlay').style.display   = 'none';
+  document.getElementById('laadOverlay').style.display = 'none';
 
   const root = document.documentElement;
   root.style.setProperty('--green',       '#5B9A2F');
@@ -147,9 +149,12 @@ function toonFoutScherm(bericht) {
   // Sessie opruimen — er is geen klantrecord, dus de app kan niet laden.
   // Door uit te loggen keert het loginscherm terug en kan de gebruiker
   // het opnieuw proberen met een ander e-mailadres.
-  toast(bericht, 'error', 8000);
+  // De melding blijft op het loginscherm staan tot een nieuwe poging.
   console.error('Fout bij inloggen:', bericht);
-  sb.auth.signOut().then(() => verwerkUitlog());
+  sb.auth.signOut().then(() => {
+    verwerkUitlog();
+    toonAuthFout(bericht);
+  });
 }
 
 function setBadge(type, tekst) {
@@ -158,3 +163,20 @@ function setBadge(type, tekst) {
   b.className  = 'status-badge ' + type;
   b.textContent = tekst;
 }
+
+// ============================================================
+// VANGNET LAADSCHERM
+// Als er na 8 seconden nog geen auth-beslissing is gevallen
+// (geen sessie-event, geen invite-flow), toon dan het loginscherm
+// zodat niemand op een eeuwig laadscherm blijft hangen.
+// ============================================================
+setTimeout(() => {
+  const laad = document.getElementById('laadOverlay');
+  if (!laad || laad.style.display === 'none') return;
+  if (_appGeladen || _verwerkBezig) return;
+  if (document.getElementById('wwOverlay').style.display === 'flex') return;
+
+  console.warn('Laadscherm-vangnet: geen auth-beslissing na 8s, toon login');
+  laad.style.display = 'none';
+  document.getElementById('authOverlay').style.display = 'flex';
+}, 8000);

@@ -32,6 +32,22 @@ let _inviteMode = false;  // true zolang invite-activering bezig is
 let _inviteHash = null;   // token_hash uit de invite-URL
 let _wwFlow     = null;   // 'invite' | 'reset' | null
 
+// Iconen voor de wachtwoord-toggle
+const _svgOog      = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+const _svgOogDicht = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+
+// ============================================================
+// WACHTWOORD TONEN/VERBERGEN
+// ============================================================
+function toggleWachtwoord(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  const toonTekst = input.type === 'password';
+  input.type = toonTekst ? 'text' : 'password';
+  btn.innerHTML = toonTekst ? _svgOogDicht : _svgOog;
+  btn.setAttribute('aria-label', toonTekst ? 'Verberg wachtwoord' : 'Toon wachtwoord');
+}
+
 
 // ============================================================
 // INVITE DETECTIE
@@ -62,6 +78,7 @@ function toonWwScherm(flow, email) {
 
   const overlay  = document.getElementById('wwOverlay');
   const authOvl  = document.getElementById('authOverlay');
+  const laadOvl  = document.getElementById('laadOverlay');
   const titel    = document.getElementById('wwTitel');
   const sub      = document.getElementById('wwSub');
   const btnTekst = document.getElementById('wwBtnTekst');
@@ -100,6 +117,7 @@ function toonWwScherm(flow, email) {
 
   if (overlay) overlay.style.display = 'flex';
   if (authOvl) authOvl.style.display = 'none';
+  if (laadOvl) laadOvl.style.display = 'none';
   if (ww1) setTimeout(() => ww1.focus(), 100);
 }
 
@@ -154,12 +172,13 @@ async function authLogin() {
     const { error } = await sb.auth.signInWithPassword({ email, password: pass });
 
     if (error) {
+      console.error('Login fout:', error.message);
       const foutmeldingen = {
         'Invalid login credentials': 'E-mail of wachtwoord is onjuist.',
         'Email not confirmed':       'Bevestig eerst je e-mailadres via de ontvangen mail.',
         'Too many requests':         'Te veel pogingen. Wacht even en probeer opnieuw.',
       };
-      toonAuthFout(foutmeldingen[error.message] || error.message);
+      toonAuthFout(foutmeldingen[error.message] || 'Inloggen is niet gelukt. Controleer je gegevens en probeer het opnieuw.');
     }
     // Bij succes: onAuthStateChange (SIGNED_IN) neemt het over
   } catch (err) {
@@ -233,30 +252,18 @@ async function activeerAccount() {
 
     if (updateFout) {
       console.error('updateUser fout:', updateFout);
-      foutEl.textContent   = 'Fout bij instellen wachtwoord: ' + updateFout.message;
+      const bekendeFouten = {
+        'New password should be different from the old password.': 'Kies een ander wachtwoord dan je vorige.',
+      };
+      foutEl.textContent   = bekendeFouten[updateFout.message] || 'Wachtwoord instellen is niet gelukt. Probeer het opnieuw.';
       foutEl.style.display = 'block';
       resetWwKnop();
       return;
     }
 
-    // ── INVITE: koppel auth_user_id aan klantrecord ──
-    if (_wwFlow === 'invite') {
-      const { data: sessieNu } = await sb.auth.getSession();
-      const user = sessieNu?.session?.user;
-
-      if (user?.email) {
-        const { error: koppelFout } = await sb
-          .from('klanten')
-          .update({ auth_user_id: user.id })
-          .eq('email', user.email.toLowerCase())
-          .is('auth_user_id', null);
-
-        if (koppelFout) {
-          // Niet fataal — klant is ingelogd, koppeling kan handmatig hersteld worden
-          console.error('Koppelen klant mislukt:', koppelFout);
-        }
-      }
-    }
+    // De koppeling van auth_user_id aan het klantrecord gebeurt in
+    // KlimKeurPro bij het versturen van de uitnodiging — niet hier.
+    // (RLS staat een ongekoppelde klant ook geen update op klanten toe.)
 
     // ── OPRUIMEN ──
     history.replaceState(null, '', window.location.pathname);
