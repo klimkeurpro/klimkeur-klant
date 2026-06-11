@@ -392,6 +392,7 @@ function renderArtikelen() {
 
     const details = [
       art.merk || '',
+      art.materiaal || '',
       art.serienummer ? 'SN: ' + art.serienummer : '',
     ].filter(Boolean).join(' · ');
 
