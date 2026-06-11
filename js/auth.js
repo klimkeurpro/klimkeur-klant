@@ -76,6 +76,9 @@ function toonWwScherm(flow, email) {
   if (ww1) ww1.value = '';
   if (ww2) ww2.value = '';
 
+  const terugBtn = document.getElementById('wwTerugNaarInloggen');
+  if (terugBtn) terugBtn.style.display = 'none';
+
   // Teksten per flow
   if (flow === 'invite') {
     if (titel)    titel.textContent    = 'Welkom!';
@@ -216,8 +219,9 @@ async function activeerAccount() {
 
         if (verifyFout) {
           console.error('verifyOtp fout:', verifyFout);
-          foutEl.textContent   = 'Activatielink is verlopen of al gebruikt. Vraag een nieuwe aan bij je keurmeester.';
+          foutEl.textContent   = 'Deze link is al gebruikt of verlopen. Heb je al eerder een wachtwoord ingesteld? Ga terug naar inloggen en klik op "Wachtwoord vergeten" om een nieuwe link te ontvangen.';
           foutEl.style.display = 'block';
+          toonTerugNaarInloggenKnop();
           resetWwKnop();
           return;
         }
@@ -283,6 +287,30 @@ function resetWwKnop() {
   const btnTekst = document.getElementById('wwBtnTekst');
   if (btn)      btn.disabled = false;
   if (btnTekst) btnTekst.textContent = _wwFlow === 'reset' ? 'Wachtwoord opslaan' : 'Account activeren';
+}
+
+
+// ============================================================
+// TERUG NAAR INLOGGEN
+// Wordt getoond als een activatielink al gebruikt/verlopen is,
+// zodat de klant meteen "Wachtwoord vergeten" kan gebruiken.
+// ============================================================
+function toonTerugNaarInloggenKnop() {
+  const terugBtn = document.getElementById('wwTerugNaarInloggen');
+  if (terugBtn) terugBtn.style.display = 'block';
+}
+
+function terugNaarInloggen() {
+  history.replaceState(null, '', window.location.pathname);
+  _inviteHash = null;
+  _inviteMode = false;
+  _wwFlow     = null;
+
+  document.getElementById('wwOverlay').style.display   = 'none';
+  document.getElementById('authOverlay').style.display = 'flex';
+
+  const emailInput = document.getElementById('authEmail');
+  if (emailInput) setTimeout(() => emailInput.focus(), 100);
 }
 
 
