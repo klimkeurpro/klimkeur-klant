@@ -564,12 +564,6 @@ function toggleToevoegForm() {
   if (fGebruiker && _actieveGebruiker && !fGebruiker.value) {
     fGebruiker.value = _actieveGebruiker;
   }
-  // Ingebruikname standaard op vandaag: vanaf deze datum telt 12 maanden
-  // tot de eerste keuring.
-  const fInGebruik = el('fInGebruik');
-  if (fInGebruik && !fInGebruik.value) {
-    fInGebruik.value = new Date().toISOString().slice(0, 10);
-  }
   setTimeout(() => el('fOmschr')?.focus(), 100);
 }
 
@@ -596,7 +590,6 @@ async function voegToe() {
   const omschr = el('fOmschr').value.trim();
   const sn     = el('fSN').value.trim();
   if (!omschr) { toast('Vul een omschrijving in', 'error'); el('fOmschr').focus(); return; }
-  if (!el('fInGebruik').value) { toast('Vul de ingebruikname-datum in', 'error'); el('fInGebruik').focus(); return; }
 
   const uniek = getUniekeArtikelenLijst();
   if (sn && uniek.some(a => a.serienummer && a.serienummer.toLowerCase() === sn.toLowerCase())) {
