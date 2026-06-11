@@ -940,8 +940,8 @@ function _bouwPDF(items, ondertitel) {
   y = 30;
 
   const infoRijen = [
-    ['Eigenaar:', _klantNaam || '—'], ['Laatste keuring:', c.datum ? formatDatum(c.datum) : '—'],
-    ['Keurmeester:', c.keurmeester || '—'], ['Laatste certificaat:', c.nr || '—'], ['Gegenereerd op:', vandaag],
+    ['Eigenaar:', _klantNaam || '—'],
+    ['Keurmeester:', c.keurmeester || '—'], ['Gegenereerd op:', vandaag],
   ];
   if (ondertitel) infoRijen.push(['Gebruiker:', ondertitel]);
 
