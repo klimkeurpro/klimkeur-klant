@@ -21,9 +21,20 @@
 </div>
 
 <!-- ============================================================
+     LAADSCHERM — zichtbaar tot bekend is of er een sessie is.
+     Voorkomt dat ingelogde klanten eerst het loginscherm zien.
+     ============================================================ -->
+<div class="auth-overlay" id="laadOverlay">
+  <div style="text-align:center">
+    <div class="loader-spinner"></div>
+    <div style="font-size:14px;color:var(--text-muted)">Bezig met laden…</div>
+  </div>
+</div>
+
+<!-- ============================================================
      LOGIN OVERLAY
      ============================================================ -->
-<div class="auth-overlay" id="authOverlay">
+<div class="auth-overlay" id="authOverlay" style="display:none">
   <div class="auth-box">
     <div class="auth-logo">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -38,26 +49,32 @@
     <div class="auth-title">Inloggen</div>
     <div class="auth-sub">Voer je e-mailadres en wachtwoord in</div>
     <div class="auth-error" id="authError"></div>
-    <div class="form-group">
-      <label class="form-label">E-mailadres</label>
-      <input class="form-input" id="authEmail" type="email"
-        placeholder="naam@voorbeeld.nl" autocomplete="email"
-        onkeydown="if(event.key==='Enter')document.getElementById('authPassword').focus()">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Wachtwoord</label>
-      <input class="form-input" id="authPassword" type="password"
-        placeholder="••••••••" autocomplete="current-password"
-        onkeydown="if(event.key==='Enter')authLogin()">
-    </div>
-    <button class="btn btn-primary" id="authBtn" onclick="authLogin()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-        <polyline points="10 17 15 12 10 7"/>
-        <line x1="15" y1="12" x2="3" y2="12"/>
-      </svg>
-      Inloggen
-    </button>
+    <form id="authForm" onsubmit="event.preventDefault();authLogin()">
+      <div class="form-group">
+        <label class="form-label" for="authEmail">E-mailadres</label>
+        <input class="form-input" id="authEmail" name="email" type="email"
+          placeholder="naam@voorbeeld.nl" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="authPassword">Wachtwoord</label>
+        <div class="pw-wrap">
+          <input class="form-input" id="authPassword" name="password" type="password"
+            placeholder="••••••••" autocomplete="current-password">
+          <button type="button" class="pw-toggle" aria-label="Toon wachtwoord"
+            onclick="toggleWachtwoord('authPassword', this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="authBtn" type="submit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+          <polyline points="10 17 15 12 10 7"/>
+          <line x1="15" y1="12" x2="3" y2="12"/>
+        </svg>
+        Inloggen
+      </button>
+    </form>
     <div class="auth-footer">Geen account? Neem contact op met je keurmeester.</div>
     <div style="text-align:center;margin-top:12px">
       <a id="wwVergetenLink" href="#" onclick="event.preventDefault();wachtwoordVergeten()"
@@ -66,7 +83,8 @@
       </a>
     </div>
     <div id="wwVergetenBevestiging" style="display:none;margin-top:12px;background:#EBF5E1;border:1px solid #B8DFA0;border-radius:8px;padding:10px 14px;font-size:13px;color:#2D5A16;text-align:center">
-      Reset-mail verstuurd! Controleer je inbox.
+      Als dit e-mailadres bij ons bekend is, ontvang je binnen enkele minuten een e-mail.
+      Niets ontvangen? Controleer ook je spam-map.
     </div>
   </div>
 </div>
@@ -93,25 +111,37 @@
       <strong id="wwEmailAdres"></strong>
     </div>
     <div class="auth-error" id="wwError"></div>
-    <div class="form-group">
-      <label class="form-label">Nieuw wachtwoord</label>
-      <input class="form-input" id="wwNieuw" type="password"
-        placeholder="Minimaal 8 tekens" autocomplete="new-password"
-        onkeydown="if(event.key==='Enter')document.getElementById('wwHerhaal').focus()">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Herhaal wachtwoord</label>
-      <input class="form-input" id="wwHerhaal" type="password"
-        placeholder="Herhaal wachtwoord" autocomplete="new-password"
-        onkeydown="if(event.key==='Enter')activeerAccount()">
-    </div>
-    <button class="btn btn-primary" id="wwBtn" onclick="activeerAccount()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M9 12l2 2 4-4"/>
+    <form id="wwForm" onsubmit="event.preventDefault();activeerAccount()">
+      <div class="form-group">
+        <label class="form-label" for="wwNieuw">Nieuw wachtwoord</label>
+        <div class="pw-wrap">
+          <input class="form-input" id="wwNieuw" name="new-password" type="password"
+            placeholder="Minimaal 8 tekens" autocomplete="new-password">
+          <button type="button" class="pw-toggle" aria-label="Toon wachtwoord"
+            onclick="toggleWachtwoord('wwNieuw', this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="wwHerhaal">Herhaal wachtwoord</label>
+        <div class="pw-wrap">
+          <input class="form-input" id="wwHerhaal" name="confirm-password" type="password"
+            placeholder="Herhaal wachtwoord" autocomplete="new-password">
+          <button type="button" class="pw-toggle" aria-label="Toon wachtwoord"
+            onclick="toggleWachtwoord('wwHerhaal', this)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="wwBtn" type="submit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 12l2 2 4-4"/>
         <circle cx="12" cy="12" r="10"/>
-      </svg>
-      <span id="wwBtnTekst">Account activeren</span>
-    </button>
+        </svg>
+        <span id="wwBtnTekst">Account activeren</span>
+      </button>
+    </form>
     <button class="btn btn-secondary" id="wwTerugNaarInloggen" onclick="terugNaarInloggen()" style="display:none;margin-top:10px">
       Terug naar inloggen
     </button>
@@ -490,7 +520,7 @@
 <!-- ============================================================
      SCRIPTS
      ============================================================ -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4"></script>
 <script src="js/config.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/branding.js"></script>
