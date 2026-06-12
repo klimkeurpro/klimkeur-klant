@@ -1009,6 +1009,7 @@ function _keuringItemRij(i) {
 
   const details = [
     i.merk || '',
+    i.materiaal || '',
     i.serienummer ? 'SN: ' + i.serienummer : '',
   ].filter(Boolean).join(' · ');
 
