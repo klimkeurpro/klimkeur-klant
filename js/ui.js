@@ -295,6 +295,9 @@ function renderArtikelen() {
   el('statGoed').textContent    = goed;
   el('statKeuring').textContent = nodig;
 
+  const statKeuringenEl = el('statKeuringen');
+  if (statKeuringenEl) statKeuringenEl.textContent = _keuringen.length;
+
   // ── "Keuring aanvragen" knop tonen/verbergen ──────────────
   _updateKeuringAanvraagKnop(keuringNodigLijst);
 
@@ -871,6 +874,157 @@ function sluitHistorieModal() {
   _historieArtikelId = null;
 }
 
+// ============================================================
+// KEURINGEN MODAL — overzicht van alle keuringen + detail
+// Gebruikt _keuringen (al geladen bij login), geen extra queries
+// ============================================================
+function openKeuringenModal() {
+  const modal  = el('keuringenModal');
+  const inhoud = el('keuringenInhoud');
+  const titel  = el('keuringenTitel');
+  const terug  = el('keuringenTerugBtn');
+
+  if (titel) titel.textContent = 'Keuringen';
+  if (terug) terug.style.display = 'none';
+  modal.classList.add('active');
+
+  if (_keuringen.length === 0) {
+    inhoud.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-muted)">
+      <div style="font-size:14px">Nog geen keuringen</div>
+      <div style="font-size:12px;margin-top:4px">Zodra je keurmeester een keuring uitvoert, verschijnt die hier.</div>
+    </div>`;
+    return;
+  }
+
+  inhoud.innerHTML = _keuringen.map((k, idx) => {
+    const items     = k._items || [];
+    const goed      = items.filter(i => i.status === 'goedgekeurd').length;
+    const afgekeurd = items.filter(i => i.status === 'afgekeurd').length;
+
+    const laatsteBadge = idx === 0
+      ? '<span style="background:var(--green,#5B9A2F);color:#fff;font-size:10px;padding:2px 6px;border-radius:10px;margin-right:6px">Laatste</span>'
+      : '';
+    const bezigBadge = !k.afgerond
+      ? '<span style="background:#FAEEDA;color:#854F0B;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500;white-space:nowrap">In behandeling</span>'
+      : '';
+
+    const badges = [
+      goed > 0 ? `<span style="display:inline-flex;align-items:center;gap:4px;background:#EAF3DE;color:#3B6D11;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500;white-space:nowrap">${_svgVinkje} ${goed} goed</span>` : '',
+      afgekeurd > 0 ? `<span style="display:inline-flex;align-items:center;gap:4px;background:#FCEBEB;color:#A32D2D;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500;white-space:nowrap">${_svgKruis} ${afgekeurd} afgekeurd</span>` : '',
+      bezigBadge,
+    ].filter(Boolean).join(' ');
+
+    return `<div onclick="openKeuringDetail('${esc(String(k.id))}')"
+      style="background:var(--bg-card,#fff);border:1px solid var(--border,#e0e0e0);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <div style="display:flex;align-items:center;min-width:0">
+          ${laatsteBadge}
+          <strong style="font-size:14px">${formatDatum(k.datum)}</strong>
+          <span style="font-size:12px;color:var(--text-muted,#999);margin-left:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(k.certificaat_nr)}</span>
+        </div>
+        <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-muted,#999)" stroke-width="2" width="14" height="14" style="flex-shrink:0">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      </div>
+      <div style="font-size:12px;color:var(--text-secondary,#666);margin-top:4px">
+        ${esc(k.keurmeester || '—')} · ${items.length} ${items.length === 1 ? 'artikel' : 'artikelen'}
+      </div>
+      ${badges ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${badges}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function openKeuringDetail(keuringId) {
+  const k = _keuringen.find(x => String(x.id) === String(keuringId));
+  if (!k) return;
+
+  const inhoud = el('keuringenInhoud');
+  const titel  = el('keuringenTitel');
+  const terug  = el('keuringenTerugBtn');
+
+  if (titel) titel.textContent = 'Keuring ' + formatDatum(k.datum);
+  if (terug) terug.style.display = 'inline-flex';
+
+  const items = k._items || [];
+
+  const kop = `<div style="font-size:12px;color:var(--text-secondary,#666);margin-bottom:14px;line-height:1.6">
+    Certificaat: <strong>${esc(k.certificaat_nr)}</strong><br>
+    Keurmeester: ${esc(k.keurmeester || '—')}${k.bedrijf_keurmeester ? ' · ' + esc(k.bedrijf_keurmeester) : ''}
+    ${!k.afgerond ? '<br><span style="background:#FAEEDA;color:#854F0B;font-size:11px;padding:2px 8px;border-radius:12px;font-weight:500">In behandeling</span>' : ''}
+  </div>`;
+
+  if (items.length === 0) {
+    inhoud.innerHTML = kop + `<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:14px">
+      Geen artikelen gekoppeld aan deze keuring.
+    </div>`;
+    return;
+  }
+
+  // ── Groeperen per gebruiker ─────────────────────────────────
+  // Groepen standaard ingeklapt zodat ook grote keuringen
+  // (honderden artikelen) direct overzichtelijk blijven
+  const groepen = {};
+  items.forEach(i => {
+    const naam = (i.gebruiker || '').trim();
+    const key  = naam.toLowerCase() || ' ';
+    if (!groepen[key]) groepen[key] = { naam: naam || 'Geen gebruiker', leeg: !naam, items: [] };
+    groepen[key].items.push(i);
+  });
+
+  const lijst = Object.values(groepen).sort((a, b) => {
+    if (a.leeg !== b.leeg) return a.leeg ? 1 : -1;
+    return a.naam.localeCompare(b.naam, 'nl');
+  });
+
+  inhoud.innerHTML = kop + lijst.map(g => {
+    const goed      = g.items.filter(i => i.status === 'goedgekeurd').length;
+    const afgekeurd = g.items.filter(i => i.status === 'afgekeurd').length;
+    const telling = [
+      goed > 0 ? `<span style="color:#3B6D11">${goed} goed</span>` : '',
+      afgekeurd > 0 ? `<span style="color:#A32D2D">${afgekeurd} afgekeurd</span>` : '',
+    ].filter(Boolean).join(' · ');
+
+    return `<details ${lijst.length === 1 ? 'open' : ''}
+      style="background:var(--bg-card,#fff);border:1px solid var(--border,#e0e0e0);border-radius:10px;margin-bottom:8px">
+      <summary style="cursor:pointer;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;list-style:none">
+        <span style="font-size:13px;font-weight:600">👤 ${esc(g.naam)} <span style="color:var(--text-muted,#999);font-weight:400">(${g.items.length})</span></span>
+        <span style="font-size:11px;white-space:nowrap">${telling}</span>
+      </summary>
+      <div style="border-top:1px solid var(--border,#eee)">
+        ${g.items.map(_keuringItemRij).join('')}
+      </div>
+    </details>`;
+  }).join('');
+}
+
+function _keuringItemRij(i) {
+  let statusHtml = '';
+  if (i.status === 'goedgekeurd') {
+    statusHtml = `<span style="display:inline-flex;align-items:center;gap:4px;background:#EAF3DE;color:#3B6D11;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500;white-space:nowrap">${_svgVinkje} Goed</span>`;
+  } else if (i.status === 'afgekeurd') {
+    statusHtml = `<span style="display:inline-flex;align-items:center;gap:4px;background:#FCEBEB;color:#A32D2D;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500;white-space:nowrap">${_svgKruis} Afgekeurd${i.afkeurcode ? ' — ' + esc(i.afkeurcode) : ''}</span>`;
+  } else {
+    statusHtml = '<span style="background:#FAEEDA;color:#854F0B;font-size:11px;padding:3px 8px;border-radius:12px;font-weight:500;white-space:nowrap">Onbeoordeeld</span>';
+  }
+
+  const details = [
+    i.merk || '',
+    i.serienummer ? 'SN: ' + i.serienummer : '',
+  ].filter(Boolean).join(' · ');
+
+  return `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border,#f0f0f0)">
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:500;color:var(--text,#333)">${esc(i.omschrijving || '')}</div>
+      ${details ? `<div style="font-size:11px;color:var(--text-muted,#999);margin-top:1px">${esc(details)}</div>` : ''}
+    </div>
+    <div style="flex-shrink:0">${statusHtml}</div>
+  </div>`;
+}
+
+function sluitKeuringenModal() {
+  el('keuringenModal').classList.remove('active');
+}
+
 async function slaHistorieOpmerkingOp() {
   if (!_historieArtikelId) return;
   const opmerking = el('historieOpmerking')?.value?.trim() || '';
@@ -1140,5 +1294,5 @@ window.addEventListener('online', () => { el('offlineBar').classList.remove('sho
 // KEYBOARD SHORTCUTS
 // ============================================================
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') { sluitModal(); sluitToevoegModal(); sluitHistorieModal(); }
+  if (e.key === 'Escape') { sluitModal(); sluitToevoegModal(); sluitHistorieModal(); sluitKeuringenModal(); }
 });

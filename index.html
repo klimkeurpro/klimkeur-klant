@@ -227,6 +227,10 @@
       <div class="stat-nr" id="statKeuring" style="color:var(--warning)">0</div>
       <div class="stat-lbl">Keuring nodig</div>
     </div>
+    <div class="stat-box stat-clickable" id="statBoxKeuringen" onclick="openKeuringenModal()">
+      <div class="stat-nr" id="statKeuringen">0</div>
+      <div class="stat-lbl">Keuringen</div>
+    </div>
   </div>
 
   <!-- Keuring aanvragen knop — wordt getoond/verborgen door ui.js -->
@@ -513,6 +517,28 @@
     </div>
     <div class="modal-footer" style="margin-top:12px">
       <button class="btn btn-secondary" onclick="sluitHistorieModal()">Sluiten</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     MODAL: Keuringen overzicht + detail per keuring
+     ============================================================ -->
+<div class="modal-overlay" id="keuringenModal" onclick="if(event.target===this)sluitKeuringenModal()">
+  <div class="modal" style="max-width:480px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <button id="keuringenTerugBtn" onclick="openKeuringenModal()" title="Terug naar overzicht"
+        style="display:none;align-items:center;justify-content:center;background:none;border:1.5px solid var(--border);border-radius:8px;width:32px;height:32px;cursor:pointer;color:var(--text);flex-shrink:0">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+          <line x1="19" y1="12" x2="5" y2="12"/>
+          <polyline points="12 19 5 12 12 5"/>
+        </svg>
+      </button>
+      <div class="modal-title" id="keuringenTitel" style="margin-bottom:0">Keuringen</div>
+    </div>
+    <div id="keuringenInhoud"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="sluitKeuringenModal()">Sluiten</button>
     </div>
   </div>
 </div>
